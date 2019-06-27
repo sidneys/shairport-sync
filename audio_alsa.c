@@ -1406,8 +1406,8 @@ static void start(__attribute__((unused)) int i_sample_rate,
                   __attribute__((unused)) int i_sample_format) {
   debug(3, "audio_alsa start called.");
 
-  frame_index = 0;
-  measurement_data_is_valid = 0;
+  conn_lock(frame_index = 0);
+  conn_lock(measurement_data_is_valid = 0);
 
   stall_monitor_start_time = 0;
   stall_monitor_frame_count = 0;
@@ -1946,8 +1946,8 @@ void *alsa_buffer_monitor_thread_code(__attribute__((unused)) void *arg) {
                  "alsa_backend_state => abm_connected");
     } else if ((alsa_backend_state == abm_connected) && (config.keep_dac_busy == 0)) {
       stall_monitor_start_time = 0;
-      frame_index = 0;
-      measurement_data_is_valid = 0;
+      conn_lock(frame_index = 0);
+      conn_lock(measurement_data_is_valid = 0);
       debug(2, "alsa: alsa_buffer_monitor_thread_code() -- closing the output "
                "device");
       do_close();

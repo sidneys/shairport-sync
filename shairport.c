@@ -223,7 +223,7 @@ void *soxr_time_check(__attribute__((unused)) void *arg) {
       (((get_absolute_time_in_fp() - soxr_start_time) * 1000000) >> 32) * 1.0;
   // free(outbuffer);
   // free(inbuffer);
-  config.soxr_delay_index = (int)(0.9 + soxr_execution_time_us / (number_of_iterations * 1000));
+  conn_lock(config.soxr_delay_index = (int)(0.9 + soxr_execution_time_us / (number_of_iterations * 1000)));
   debug(2, "soxr_delay_index: %d.", config.soxr_delay_index);
   if ((config.packet_stuffing == ST_soxr) &&
       (config.soxr_delay_index > config.soxr_delay_threshold))

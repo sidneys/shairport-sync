@@ -52,7 +52,7 @@ enum ps_state { ps_inactive, ps_active } player_state;
 int activity_monitor_running = 0;
 
 pthread_t activity_monitor_thread;
-pthread_mutex_t activity_monitor_mutex;
+pthread_mutex_t activity_monitor_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t activity_monitor_cv;
 
 void going_active(int block) {
@@ -145,20 +145,20 @@ void activity_monitor_signify_activity(int active) {
 void activity_thread_cleanup_handler(__attribute__((unused)) void *arg) {
   debug(3, "activity_monitor: thread exit.");
   pthread_cond_destroy(&activity_monitor_cv);
-  pthread_mutex_destroy(&activity_monitor_mutex);
+  // pthread_mutex_destroy(&activity_monitor_mutex);
 }
 
 void *activity_monitor_thread_code(void *arg) {
-  int rc = pthread_mutex_init(&activity_monitor_mutex, NULL);
-  if (rc)
-    die("activity_monitor: error %d initialising activity_monitor_mutex.", rc);
+  //int rc = pthread_mutex_init(&activity_monitor_mutex, NULL);
+  //if (rc)
+   // die("activity_monitor: error %d initialising activity_monitor_mutex.", rc);
 
 // set the flowcontrol condition variable to wait on a monotonic clock
 #ifdef COMPILE_FOR_LINUX_AND_FREEBSD_AND_CYGWIN_AND_OPENBSD
   pthread_condattr_t attr;
   pthread_condattr_init(&attr);
   pthread_condattr_setclock(&attr, CLOCK_MONOTONIC); // can't do this in OS X, and don't need it.
-  rc = pthread_cond_init(&activity_monitor_cv, &attr);
+  int rc = pthread_cond_init(&activity_monitor_cv, &attr);
   pthread_condattr_destroy(&attr);
 
 #endif

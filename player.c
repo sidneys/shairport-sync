@@ -445,7 +445,7 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
 
   debug_mutex_lock(&conn->ab_mutex, 30000, 0);
   conn->packet_count++;
-  conn->packet_count_since_flush++;
+  conn_lock(conn->packet_count_since_flush++);
   conn->time_of_last_audio_packet = get_absolute_time_in_fp();
   if (conn->connection_state_to_output) { // if we are supposed to be processing these packets
 
@@ -483,8 +483,8 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
       // here, we should check for missing frames
       int resend_interval = (((250 * 44100) / 352) / 1000); // approximately 250 ms intervals
       const int number_of_resend_attempts = 8;
-      int latency_based_resend_interval =
-          (conn->latency) / (number_of_resend_attempts * conn->max_frames_per_packet);
+      conn_lock(int latency_based_resend_interval =
+          (conn->latency) / (number_of_resend_attempts * conn->max_frames_per_packet));
       if (latency_based_resend_interval > resend_interval)
         resend_interval = latency_based_resend_interval;
 
@@ -505,8 +505,8 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
           }
         }
 
-        conn->frames_inward_measurement_time = reception_time;
-        conn->frames_inward_frames_received_at_measurement_time = actual_timestamp;
+        conn_lock(conn->frames_inward_measurement_time = reception_time);
+        conn_lock(conn->frames_inward_frames_received_at_measurement_time = actual_timestamp);
 
         abuf = conn->audio_buffer + BUFIDX(seqno);
         conn->ab_write = SUCCESSOR(seqno); // move the write pointer to the next free space
@@ -1999,7 +1999,7 @@ void *player_thread_func(void *arg) {
 
               switch (config.playback_mode) {
               case ST_mono: {
-                int32_t both = ls + rs;
+                int32_t both = (int32_t)ls + (int32_t)rs;
                 both = both << (16 - 1); // keep all 17 bits of the sum of the 16bit left and right
                                          // -- the 17th bit will influence dithering later
                 ll = both;
@@ -2115,15 +2115,15 @@ void *player_thread_func(void *arg) {
               conn->last_seqno_read = inframe->sequence_number; // reset warning...
             }
           }
-
-          conn->buffer_occupancy =
-              seq_diff(conn->ab_read, conn->ab_write, conn->ab_read); // int32_t from int32
+          
+          int32_t cbo = seq_diff(conn->ab_read, conn->ab_write, conn->ab_read);  // int32_t from int32
+          conn_lock(conn->buffer_occupancy = cbo;
 
           if (conn->buffer_occupancy < minimum_buffer_occupancy)
             minimum_buffer_occupancy = conn->buffer_occupancy;
 
           if (conn->buffer_occupancy > maximum_buffer_occupancy)
-            maximum_buffer_occupancy = conn->buffer_occupancy;
+            maximum_buffer_occupancy = conn->buffer_occupancy;)
 
           // here, we want to check (a) if we are meant to do synchronisation,
           // (b) if we have a delay procedure, (c) if we can get the delay.
@@ -2383,9 +2383,10 @@ void *player_thread_func(void *arg) {
               }
 
 #ifdef CONFIG_SOXR
+              conn_lock(int sdi = config.soxr_delay_index);
               if ((current_delay < conn->dac_buffer_queue_minimum_length) ||
                   (config.packet_stuffing == ST_basic) ||
-                  (config.soxr_delay_index == 0) || // not computed yet
+                  (sdi == 0) || // not computed yet
                   ((config.packet_stuffing == ST_auto) &&
                    (config.soxr_delay_index >
                     config.soxr_delay_threshold)) // if the CPU is deemed too slow
@@ -2541,10 +2542,10 @@ void *player_thread_func(void *arg) {
 
           if (conn->input_frame_rate_starting_point_is_valid) {
             uint64_t elapsed_reception_time, frames_received;
-            elapsed_reception_time =
-                conn->frames_inward_measurement_time - conn->frames_inward_measurement_start_time;
-            frames_received = conn->frames_inward_frames_received_at_measurement_time -
-                              conn->frames_inward_frames_received_at_measurement_start_time;
+            conn_lock(elapsed_reception_time =
+                conn->frames_inward_measurement_time - conn->frames_inward_measurement_start_time);
+            conn_lock(frames_received = conn->frames_inward_frames_received_at_measurement_time -
+                              conn->frames_inward_frames_received_at_measurement_start_time);
             conn->input_frame_rate =
                 (1.0 * frames_received) /
                 elapsed_reception_time; // an IEEE double calculation with two 64-bit integers

@@ -70,12 +70,12 @@ uint64_t local_to_remote_time_difference_now(rtsp_conn_info *conn) {
   // so, if we have a non-zero clock drift, we will calculate the drift there would
   // be from the time of the last time ping
   uint64_t local_time_now_fp = get_absolute_time_in_fp();
-  uint64_t time_since_last_local_to_remote_time_difference_measurement =
-      local_time_now_fp - conn->local_to_remote_time_difference_measurement_time;
+  conn_lock(uint64_t time_since_last_local_to_remote_time_difference_measurement =
+      local_time_now_fp - conn->local_to_remote_time_difference_measurement_time);
 
-  uint64_t remote_time_since_last_local_to_remote_time_difference_measurement =
+  conn_lock(uint64_t remote_time_since_last_local_to_remote_time_difference_measurement =
       (uint64_t)(conn->local_to_remote_time_gradient *
-                 time_since_last_local_to_remote_time_difference_measurement);
+                 time_since_last_local_to_remote_time_difference_measurement));
 
   double drift;
   if (remote_time_since_last_local_to_remote_time_difference_measurement >=
@@ -94,7 +94,8 @@ uint64_t local_to_remote_time_difference_now(rtsp_conn_info *conn) {
   //  milliseconds with drift of %.2f
   //  ppm.",drift*1000000,(uint64_t)(drift*(uint64_t)0x100000000),interval_ms,(1.0-conn->local_to_remote_time_gradient)*1000000);
   //  return conn->local_to_remote_time_difference + (uint64_t)(drift*(uint64_t 0x100000000));
-  return conn->local_to_remote_time_difference + (uint64_t)(drift * (uint64_t)0x100000000);
+  conn_lock(uint64_t rtn = conn->local_to_remote_time_difference + (uint64_t)(drift * (uint64_t)0x100000000));
+  return rtn;
 }
 
 void rtp_audio_receiver_cleanup_handler(__attribute__((unused)) void *arg) {
@@ -368,7 +369,7 @@ void *rtp_control_receiver(void *arg) {
               } else {
 
                 if (la != conn->latency) {
-                  conn->latency = la;
+                  conn_lock(conn->latency = la);
                   debug(3, "New latency detected: %" PRIu32 ", sync latency: %" PRIu32
                            ", minimum latency: %" PRIu32 ", maximum "
                            "latency: %" PRIu32 ", fixed offset: %" PRIu32 ".",
@@ -380,7 +381,7 @@ void *rtp_control_receiver(void *arg) {
 
             debug_mutex_lock(&conn->reference_time_mutex, 1000, 0);
 
-            if (conn->initial_reference_time == 0) {
+            conn_lock(if (conn->initial_reference_time == 0) {
               if (conn->packet_count_since_flush > 0) {
                 conn->initial_reference_time = remote_time_of_sync;
                 conn->initial_reference_timestamp = sync_rtp_timestamp;
@@ -404,6 +405,7 @@ void *rtp_control_receiver(void *arg) {
                 conn->remote_frame_rate = 0.0; // use as a flag.
               }
             }
+            )
 
             // this is for debugging
             uint64_t old_remote_reference_time = conn->remote_reference_timestamp_time;
@@ -413,7 +415,7 @@ void *rtp_control_receiver(void *arg) {
             conn->remote_reference_timestamp_time = remote_time_of_sync;
             // conn->reference_timestamp_time =
             //    remote_time_of_sync - local_to_remote_time_difference_now(conn);
-            conn->reference_timestamp = sync_rtp_timestamp;
+            conn_lock(conn->reference_timestamp = sync_rtp_timestamp);
             conn->latency_delayed_timestamp = rtp_timestamp_less_latency;
             debug_mutex_unlock(&conn->reference_time_mutex, 0);
 
@@ -758,7 +760,7 @@ void *rtp_timing_receiver(void *arg) {
             */
             conn_lock(conn->local_to_remote_time_difference =
                 l2rtd); // make this the new local-to-remote-time-difference
-            conn->local_to_remote_time_difference_measurement_time = lt; // done at this time.
+            conn_lock(conn->local_to_remote_time_difference_measurement_time = lt); // done at this time.
 
             if (first_local_to_remote_time_difference == 0) {
               first_local_to_remote_time_difference = conn->local_to_remote_time_difference;
@@ -820,14 +822,16 @@ void *rtp_timing_receiver(void *arg) {
                   mbl = mbl + xid * xid;
                 }
               conn->local_to_remote_time_gradient_sample_count = sample_count;
+              conn_lock(
               if (mbl)
                 conn->local_to_remote_time_gradient = (1.0 * mtl) / mbl;
               else {
                 conn->local_to_remote_time_gradient = 1.0;
                 debug(1, "rtp_timing_receiver: mbl is 0");
               }
+              )
             } else {
-              conn->local_to_remote_time_gradient = 1.0;
+              conn_lock(conn->local_to_remote_time_gradient = 1.0);
             }
             // debug(1,"local to remote time gradient is %12.2f ppm, based on %d
             // samples.",conn->local_to_remote_time_gradient*1000000,sample_count);
@@ -1077,7 +1081,8 @@ void clear_reference_timestamp(rtsp_conn_info *conn) {
 }
 
 int have_timestamp_timing_information(rtsp_conn_info *conn) {
-  if (conn->reference_timestamp == 0)
+  conn_lock(uint32_t rt = conn->reference_timestamp);
+  if (rt == 0)
     return 0;
   else
     return 1;
