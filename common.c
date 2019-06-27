@@ -87,6 +87,11 @@
 void set_alsa_out_dev(char *);
 #endif
 
+// always lock use this when accessing the fp_time_at_last_debug_message
+static pthread_mutex_t debug_timing_lock = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_t the_conn_lock = PTHREAD_MUTEX_INITIALIZER;
+
 const char *sps_format_description_string_array[] = {
     "unknown", "S8",      "U8",      "S16", "S16_LE", "S16_BE", "S24",  "S24_LE",
     "S24_BE",  "S24_3LE", "S24_3BE", "S32", "S32_LE", "S32_BE", "auto", "invalid"};
@@ -164,10 +169,12 @@ void die(const char *format, ...) {
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
   char s[1024];
   s[0] = 0;
+  pthread_mutex_lock(&debug_timing_lock);
   uint64_t time_now = get_absolute_time_in_fp();
   uint64_t time_since_start = time_now - fp_time_at_startup;
   uint64_t time_since_last_debug_message = time_now - fp_time_at_last_debug_message;
   fp_time_at_last_debug_message = time_now;
+  pthread_mutex_unlock(&debug_timing_lock);
   uint64_t divisor = (uint64_t)1 << 32;
   double tss = 1.0 * time_since_start / divisor;
   double tsl = 1.0 * time_since_last_debug_message / divisor;
@@ -193,10 +200,12 @@ void warn(const char *format, ...) {
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
   char s[1024];
   s[0] = 0;
+  pthread_mutex_lock(&debug_timing_lock);
   uint64_t time_now = get_absolute_time_in_fp();
   uint64_t time_since_start = time_now - fp_time_at_startup;
   uint64_t time_since_last_debug_message = time_now - fp_time_at_last_debug_message;
   fp_time_at_last_debug_message = time_now;
+  pthread_mutex_unlock(&debug_timing_lock);
   uint64_t divisor = (uint64_t)1 << 32;
   double tss = 1.0 * time_since_start / divisor;
   double tsl = 1.0 * time_since_last_debug_message / divisor;
@@ -222,10 +231,12 @@ void debug(int level, const char *format, ...) {
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
   char s[1024];
   s[0] = 0;
+  pthread_mutex_lock(&debug_timing_lock);
   uint64_t time_now = get_absolute_time_in_fp();
   uint64_t time_since_start = time_now - fp_time_at_startup;
   uint64_t time_since_last_debug_message = time_now - fp_time_at_last_debug_message;
   fp_time_at_last_debug_message = time_now;
+  pthread_mutex_unlock(&debug_timing_lock);
   uint64_t divisor = (uint64_t)1 << 32;
   double tss = 1.0 * time_since_start / divisor;
   double tsl = 1.0 * time_since_last_debug_message / divisor;
@@ -249,10 +260,12 @@ void inform(const char *format, ...) {
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
   char s[1024];
   s[0] = 0;
+  pthread_mutex_lock(&debug_timing_lock);
   uint64_t time_now = get_absolute_time_in_fp();
   uint64_t time_since_start = time_now - fp_time_at_startup;
   uint64_t time_since_last_debug_message = time_now - fp_time_at_last_debug_message;
   fp_time_at_last_debug_message = time_now;
+  pthread_mutex_unlock(&debug_timing_lock);
   uint64_t divisor = (uint64_t)1 << 32;
   double tss = 1.0 * time_since_start / divisor;
   double tsl = 1.0 * time_since_last_debug_message / divisor;

@@ -207,9 +207,9 @@ static inline seq_t seq_sum(seq_t a, seq_t b) {
 }
 
 void reset_input_flow_metrics(rtsp_conn_info *conn) {
-  conn->play_number_after_flush = 0;
-  conn->packet_count_since_flush = 0;
-  conn->input_frame_rate_starting_point_is_valid = 0;
+  conn_lock(conn->play_number_after_flush = 0);
+  conn_lock(conn->packet_count_since_flush = 0);
+  conn_lock(conn->input_frame_rate_starting_point_is_valid = 0);
   conn->initial_reference_time = 0;
   conn->initial_reference_timestamp = 0;
 }
@@ -1618,15 +1618,15 @@ void *player_thread_func(void *arg) {
   rtsp_conn_info *conn = (rtsp_conn_info *)arg;
   // pthread_cleanup_push(player_thread_initial_cleanup_handler, arg);
   conn->packet_count = 0;
-  conn->packet_count_since_flush = 0;
+  conn_lock(conn->packet_count_since_flush = 0);
   conn->previous_random_number = 0;
   conn->input_bytes_per_frame = 4;
   conn->decoder_in_use = 0;
   conn->ab_buffering = 1;
   conn->ab_synced = 0;
   conn->first_packet_timestamp = 0;
-  conn->flush_requested = 0;
-  conn->fix_volume = 0x10000;
+  conn_lock(conn->flush_requested = 0);
+  conn_lock(conn->fix_volume = 0x10000);
 
   if (conn->latency == 0) {
     debug(3, "No latency has (yet) been specified. Setting 88,200 (2 seconds) frames "
@@ -1730,14 +1730,14 @@ void *player_thread_func(void *arg) {
   conn->frame_rate_status = 0;
 
   conn->input_frame_rate = 0.0;
-  conn->input_frame_rate_starting_point_is_valid = 0;
+  conn_lock(conn->input_frame_rate_starting_point_is_valid = 0);
 
   conn->buffer_occupancy = 0;
 
   int play_samples = 0;
   int64_t current_delay;
   int play_number = 0;
-  conn->play_number_after_flush = 0;
+  conn_lock(conn->play_number_after_flush = 0);
   //  int last_timestamp = 0; // for debugging only
   conn->time_of_last_audio_packet = 0;
   // conn->shutdown_requested = 0;
@@ -1834,7 +1834,7 @@ void *player_thread_func(void *arg) {
     die("Failed to allocate memory for an output buffer.");
   conn->first_packet_timestamp = 0;
   conn->missing_packets = conn->late_packets = conn->too_late_packets = conn->resend_requests = 0;
-  conn->flush_rtp_timestamp = 0; // it seems this number has a special significance -- it seems to
+  conn_lock(conn->flush_rtp_timestamp = 0); // it seems this number has a special significance -- it seems to
                                  // be used as a null operand, so we'll use it like that too
   int sync_error_out_of_bounds =
       0; // number of times in a row that there's been a serious sync error
@@ -2864,7 +2864,7 @@ void player_volume_without_notification(double airplay_volume, rtsp_conn_info *c
         // debug(1,"Software attenuation set to %f, i.e %f out of 65,536, for airplay volume of
         // %f",software_attenuation,temp_fix_volume,airplay_volume);
 
-        conn->fix_volume = temp_fix_volume;
+        conn_lock(conn->fix_volume = temp_fix_volume);
 
         if (config.loudness)
           loudness_set_volume(software_attenuation / 100);
@@ -2911,9 +2911,9 @@ void do_flush(uint32_t timestamp, rtsp_conn_info *conn) {
 
   debug(3, "Flush requested up to %u. It seems as if 0 is special.", timestamp);
   debug_mutex_lock(&conn->flush_mutex, 1000, 1);
-  conn->flush_requested = 1;
+  conn_lock(conn->flush_requested = 1);
   // if (timestamp!=0)
-  conn->flush_rtp_timestamp = timestamp; // flush all packets up to (and including?) this
+  conn_lock(conn->flush_rtp_timestamp = timestamp); // flush all packets up to (and including?) this
   // conn->play_segment_reference_frame = 0;
   reset_input_flow_metrics(conn);
   debug_mutex_unlock(&conn->flush_mutex, 3);

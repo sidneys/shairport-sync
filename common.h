@@ -362,6 +362,13 @@ void shairport_shutdown();
 
 extern sigset_t pselect_sigset;
 
+pthread_mutex_t the_conn_lock;
+
+#define conn_lock(arg) \
+  pthread_mutex_lock(&the_conn_lock); \
+  arg; \
+  pthread_mutex_unlock(&the_conn_lock);  
+
 // wait for the specified time in microseconds -- it checks every 20 milliseconds
 int sps_pthread_mutex_timedlock(pthread_mutex_t *mutex, useconds_t dally_time,
                                 const char *debugmessage, int debuglevel);

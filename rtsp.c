@@ -351,7 +351,8 @@ void cleanup_threads(void) {
   int i;
   // debug(2, "culling threads.");
   for (i = 0; i < nconns;) {
-    if (conns[i]->running == 0) {
+    conn_lock(int is_running = conns[i]->running);
+    if (is_running == 0) {
       debug(3, "found RTSP connection thread %d in a non-running state.",
             conns[i]->connection_number);
       pthread_join(conns[i]->thread, &retval);
@@ -2277,7 +2278,7 @@ void rtsp_conversation_thread_cleanup_function(void *arg) {
   debug_mutex_unlock(&playing_conn_lock, 3);
 
   debug(2, "Connection %d: terminated.", conn->connection_number);
-  conn->running = 0;
+  conn_lock(conn->running = 0);
   pthread_setcancelstate(oldState, NULL);
 }
 
@@ -2701,7 +2702,7 @@ void rtsp_listen_loop(void) {
             conn->connection_number, ret, (char *)errorstring);
       }
       debug(3, "Successfully created RTSP receiver thread %d.", conn->connection_number);
-      conn->running = 1; // this must happen before the thread is tracked
+      conn_lock(conn->running = 1); // this must happen before the thread is tracked
       track_thread(conn);
     }
   } while (1);

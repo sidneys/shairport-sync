@@ -240,7 +240,7 @@ void *rtp_control_receiver(void *arg) {
   pthread_cleanup_push(rtp_control_handler_cleanup_handler, arg);
   rtsp_conn_info *conn = (rtsp_conn_info *)arg;
 
-  conn->reference_timestamp = 0; // nothing valid received yet
+  conn_lock(conn->reference_timestamp = 0); // nothing valid received yet
   uint8_t packet[2048], *pktp;
   // struct timespec tn;
   uint64_t remote_time_of_sync;
@@ -300,8 +300,9 @@ void *rtp_control_receiver(void *arg) {
                                                               //debug(1,"Monotonic timestamps are: %" PRId64 " and %" PRId64 "
                                                           respectively.",monotonic_timestamp(rt, conn),monotonic_timestamp(rtlt, conn));
                                                             }
-                                                       */
-          if (conn->local_to_remote_time_difference) { // need a time packet to be interchanged
+                                                      */
+          conn_lock(uint64_t ltrd = conn->local_to_remote_time_difference);
+          if (ltrd) { // need a time packet to be interchanged
                                                        // first...
 
             remote_time_of_sync = (uint64_t)nctohl(&packet[8]) << 32;
@@ -521,7 +522,8 @@ void *rtp_timing_sender(void *arg) {
     req.origin = req.receive = req.transmit = 0;
 
     //    clock_gettime(CLOCK_MONOTONIC,&dtt);
-    conn->departure_time = get_absolute_time_in_fp();
+    uint64_t dp = get_absolute_time_in_fp();
+    conn_lock(conn->departure_time = dp);
     socklen_t msgsize = sizeof(struct sockaddr_in);
 #ifdef AF_INET6
     if (conn->rtp_client_timing_socket.SAFAMILY == AF_INET6) {
@@ -616,7 +618,7 @@ void *rtp_timing_receiver(void *arg) {
           // arrival_time = ((uint64_t)att.tv_sec<<32)+((uint64_t)att.tv_nsec<<32)/1000000000;
           // departure_time = ((uint64_t)dtt.tv_sec<<32)+((uint64_t)dtt.tv_nsec<<32)/1000000000;
 
-          return_time = arrival_time - conn->departure_time;
+          conn_lock(return_time = arrival_time - conn->departure_time);
 
           // uint64_t rtus = (return_time * 1000000) >> 32;
 
@@ -754,8 +756,8 @@ void *rtp_timing_receiver(void *arg) {
             adjustment of %" PRId64 " us",chosen, rtus, (ji*1000000)>>32);
             }
             */
-            conn->local_to_remote_time_difference =
-                l2rtd; // make this the new local-to-remote-time-difference
+            conn_lock(conn->local_to_remote_time_difference =
+                l2rtd); // make this the new local-to-remote-time-difference
             conn->local_to_remote_time_difference_measurement_time = lt; // done at this time.
 
             if (first_local_to_remote_time_difference == 0) {
