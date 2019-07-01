@@ -75,6 +75,8 @@ typedef struct {
 } stream_cfg;
 
 typedef struct {
+  // the following variables are accessed from multiple threads and so, unless you know better, you should use accessors 
+  // int stop;
   int connection_number;     // for debug ID purposes, nothing else...
   int resend_interval;       // this is really just for debugging
   int AirPlayVersion;        // zero if not an AirPlay session. Used to help calculate latency
@@ -90,7 +92,6 @@ typedef struct {
   char *auth_nonce; // the session nonce, if needed
   stream_cfg stream;
   SOCKADDR remote, local;
-  volatile int stop;
   volatile int running;
   volatile uint64_t watchdog_bark_time;
   volatile int watchdog_barks;  // number of times the watchdog has timed out and done something
@@ -140,7 +141,7 @@ typedef struct {
   int32_t last_seqno_read;
   // mutexes and condition variables
   pthread_cond_t flowcontrol;
-  pthread_mutex_t ab_mutex, flush_mutex, volume_control_mutex;
+  pthread_mutex_t lock, ab_mutex, flush_mutex, volume_control_mutex;
   int fix_volume;
   uint32_t timestamp_epoch, last_timestamp,
       maximum_timestamp_interval; // timestamp_epoch of zero means not initialised, could start at 2
@@ -255,6 +256,9 @@ typedef struct {
   int enable_dither; // needed for filling silences before play actually starts
   int64_t dac_buffer_queue_minimum_length;
 } rtsp_conn_info;
+
+int get_conn_stop(rtsp_conn_info *conn);
+void set_conn_stop(rtsp_conn_info *conn, int v);
 
 uint32_t modulo_32_offset(uint32_t from, uint32_t to);
 uint64_t modulo_64_offset(uint64_t from, uint64_t to);

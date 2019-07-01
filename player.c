@@ -102,6 +102,24 @@
 // static abuf_t audio_buffer[BUFFER_FRAMES];
 #define BUFIDX(seqno) ((seq_t)(seqno) % BUFFER_FRAMES)
 
+
+pthread_mutex_t conn_lock = PTHREAD_MUTEX_INITIALIZER;
+
+// accessors for multi-thread-access fields in the conn structure
+
+int get_conn_stop(rtsp_conn_info *conn) {
+  pthread_mutex_lock(&conn_lock);
+  v = conn->stop;
+  pthread_mutex_unlock(&conn_lock); 
+  return v; 
+}
+
+void set_conn_stop(rtsp_conn_info *conn, int v) {
+  pthread_mutex_lock(&conn_lock);
+  conn->stop = v;
+  pthread_mutex_unlock(&conn_lock); 
+}
+
 uint32_t modulo_32_offset(uint32_t from, uint32_t to) {
   if (from <= to)
     return to - from;
@@ -904,7 +922,8 @@ static abuf_t *buffer_get_frame(rtsp_conn_info *conn) {
 
     if (conn->ab_synced) {
       curframe = conn->audio_buffer + BUFIDX(conn->ab_read);
-
+      
+      debug_mutex_lock(&conn->ab_mutex, 30000, 0);
       if ((conn->ab_read != conn->ab_write) &&
           (curframe->ready)) { // it could be synced and empty, under
                                // exceptional circumstances, with the
@@ -949,7 +968,7 @@ static abuf_t *buffer_get_frame(rtsp_conn_info *conn) {
           conn->flush_rtp_timestamp = 0;
         }
       }
-
+      debug_mutex_unlock(&conn->ab_mutex, 0);
       if ((curframe) && (curframe->ready)) {
         notified_buffer_empty = 0; // at least one buffer now -- diagnostic only.
         if (conn->ab_buffering) {  // if we are getting packets but not yet forwarding them to the

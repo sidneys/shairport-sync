@@ -295,7 +295,7 @@ void *player_watchdog_thread_code(void *arg) {
             debug(1, "Connection %d: As Yeats almost said, \"Too long a silence / can make a stone "
                      "of the heart\".",
                   conn->connection_number);
-            conn->stop = 1;
+            set_conn_stop(conn,1);
             pthread_cancel(conn->thread);
           } else if (conn->watchdog_barks == 3) {
             if ((config.cmd_unfixable) && (conn->unfixable_error_reported == 0)) {
@@ -329,7 +329,7 @@ static void track_thread(rtsp_conn_info *conn) {
     conns[nconns] = conn;
     nconns++;
   } else {
-    die("could not reallocate memnory for \"conns\" in rtsp.c.");
+    die("could not reallocate memory for \"conns\" in rtsp.c.");
   }
 }
 
@@ -601,7 +601,7 @@ do {
 } while (conn->stop == 0 &&
          pselect(conn->fd + 1, &readfds, NULL, NULL, NULL, &pselect_sigset) <= 0);
 */
-    if (conn->stop != 0) {
+    if (get_conn_stop(conn) != 0) {
       debug(3, "RTSP conversation thread %d shutdown requested.", conn->connection_number);
       reply = rtsp_read_request_response_immediate_shutdown_requested;
       goto shutdown;
@@ -695,7 +695,7 @@ do {
              pselect(conn->fd + 1, &readfds, NULL, NULL, NULL, &pselect_sigset) <= 0);
     */
 
-    if (conn->stop != 0) {
+    if (get_conn_stop(conn) != 0) {
       debug(1, "RTSP shutdown requested.");
       reply = rtsp_read_request_response_immediate_shutdown_requested;
       goto shutdown;
@@ -1684,7 +1684,7 @@ static void handle_announce(rtsp_conn_info *conn, rtsp_message *req, rtsp_messag
   } else if (playing_conn == conn) {
     have_the_player = 1;
     warn("Duplicate ANNOUNCE, by the look of it!");
-  } else if (playing_conn->stop) {
+  } else if (get_conn_stop(playing_conn)) {
     debug(1, "Connection %d ANNOUNCE is waiting for connection %d to shut down.",
           conn->connection_number, playing_conn->connection_number);
     should_wait = 1;
@@ -2279,6 +2279,7 @@ void rtsp_conversation_thread_cleanup_function(void *arg) {
 
   debug(2, "Connection %d: terminated.", conn->connection_number);
   conn_lock(conn->running = 0);
+  pthread_mutex_destroy(&conn->lock); // even though this was created by this thread's creator, not the thread itself.
   pthread_setcancelstate(oldState, NULL);
 }
 
@@ -2329,7 +2330,7 @@ static void *rtsp_conversation_thread_func(void *pconn) {
   int rtsp_read_request_attempt_count = 1; // 1 means exit immediately
   rtsp_message *req, *resp;
 
-  while (conn->stop == 0) {
+  while (get_conn_stop(conn) == 0) {
     int debug_level = 3; // for printing the request and response
     reply = rtsp_read_request(conn, &req);
     if (reply == rtsp_read_request_response_ok) {
@@ -2692,6 +2693,9 @@ void rtsp_listen_loop(void) {
       //      conn->stop = 0; // record's memory has been zeroed
       //      conn->authorized = 0; // record's memory has been zeroed
       // fcntl(conn->fd, F_SETFL, O_NONBLOCK);
+      
+      // create an access lock for the structure itself
+        pthread_mutex_init(&conn->lock, NULL);
 
       ret = pthread_create(&conn->thread, NULL, rtsp_conversation_thread_func,
                            conn); // also acts as a memory barrier
