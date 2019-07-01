@@ -1691,7 +1691,7 @@ static void handle_announce(rtsp_conn_info *conn, rtsp_message *req, rtsp_messag
   } else if (config.allow_session_interruption == 1) {
     debug(2, "Connection %d: ANNOUNCE: asking playing connection %d to shut down.",
           conn->connection_number, playing_conn->connection_number);
-    playing_conn->stop = 1;
+    set_conn_stop(playing_conn,1);
     interrupting_current_session = 1;
     should_wait = 1;
     pthread_cancel(playing_conn->thread); // asking the RTSP thread to exit
@@ -2399,7 +2399,7 @@ static void *rtsp_conversation_thread_func(void *pconn) {
                pselect(conn->fd + 1, NULL, &writefds, NULL, NULL, &pselect_sigset) <= 0);
       */
 
-      if (conn->stop == 0) {
+      if (get_conn_stop(conn) == 0) {
         int err = msg_write_response(conn->fd, resp);
         if (err) {
           debug(1, "Connection %d: Unable to write an RTSP message response. Terminating the "
@@ -2411,7 +2411,7 @@ static void *rtsp_conversation_thread_func(void *pconn) {
           err = setsockopt(conn->fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof so_linger);
           if (err)
             debug(1, "Could not set the RTSP socket to abort due to a write error on closing.");
-          conn->stop = 1;
+          set_conn_stop(conn,1);
           // if (debuglev >= 1)
           //  debuglev = 3; // see what happens next
         }
@@ -2456,7 +2456,7 @@ static void *rtsp_conversation_thread_func(void *pconn) {
       }
       if (tstop) {
         debug(3, "Connection %d: Terminate RTSP connection.", conn->connection_number);
-        conn->stop = 1;
+        set_conn_stop(conn,1);
       }
     }
   }

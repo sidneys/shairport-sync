@@ -76,7 +76,8 @@ typedef struct {
 
 typedef struct {
   // the following variables are accessed from multiple threads and so, unless you know better, you should use accessors 
-  // int stop;
+  int stop;
+  
   int connection_number;     // for debug ID purposes, nothing else...
   int resend_interval;       // this is really just for debugging
   int AirPlayVersion;        // zero if not an AirPlay session. Used to help calculate latency

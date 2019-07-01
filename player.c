@@ -109,7 +109,7 @@ pthread_mutex_t conn_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int get_conn_stop(rtsp_conn_info *conn) {
   pthread_mutex_lock(&conn_lock);
-  v = conn->stop;
+  int v = conn->stop;
   pthread_mutex_unlock(&conn_lock); 
   return v; 
 }
