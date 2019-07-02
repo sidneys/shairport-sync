@@ -102,22 +102,64 @@
 // static abuf_t audio_buffer[BUFFER_FRAMES];
 #define BUFIDX(seqno) ((seq_t)(seqno) % BUFFER_FRAMES)
 
+#define ab_lock(conn) debug_mutex_lock(&conn->ab_mutex, 30000, 0)
+
+#define ab_unlock(conn) debug_mutex_unlock(&conn->ab_mutex, 0);
+
 
 pthread_mutex_t conn_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // accessors for multi-thread-access fields in the conn structure
 
+int get_conn_software_mute_enabled(rtsp_conn_info *conn) {
+  pthread_mutex_lock(&conn->lock);
+  int v = conn->software_mute_enabled;
+  pthread_mutex_unlock(&conn->lock); 
+  return v; 
+}
+
+void clear_conn_software_mute_enabled(rtsp_conn_info *conn) {
+  pthread_mutex_lock(&conn->lock);
+  conn->software_mute_enabled = 0;
+  pthread_mutex_unlock(&conn->lock); 
+}
+
+int get_conn_fix_volume(rtsp_conn_info *conn) {
+  pthread_mutex_lock(&conn->lock);
+  int v = conn->fix_volume;
+  pthread_mutex_unlock(&conn->lock); 
+  return v; 
+}
+
+void set_conn_fix_volume(rtsp_conn_info *conn, int v) {
+  pthread_mutex_lock(&conn->lock);
+  conn->fix_volume = v;
+  pthread_mutex_unlock(&conn->lock); 
+}
+
 int get_conn_stop(rtsp_conn_info *conn) {
-  pthread_mutex_lock(&conn_lock);
+  pthread_mutex_lock(&conn->lock);
   int v = conn->stop;
-  pthread_mutex_unlock(&conn_lock); 
+  pthread_mutex_unlock(&conn->lock); 
   return v; 
 }
 
 void set_conn_stop(rtsp_conn_info *conn, int v) {
-  pthread_mutex_lock(&conn_lock);
+  pthread_mutex_lock(&conn->lock);
   conn->stop = v;
-  pthread_mutex_unlock(&conn_lock); 
+  pthread_mutex_unlock(&conn->lock); 
+}
+
+uint64_t get_conn_packet_count(rtsp_conn_info *conn) {
+  pthread_mutex_lock(&conn->lock);
+  uint64_t v = conn->packet_count;
+  pthread_mutex_unlock(&conn->lock); 
+  return v; 
+}
+void inc_conn_packet_count(rtsp_conn_info *conn) {
+  pthread_mutex_lock(&conn->lock);
+  conn->packet_count++;
+  pthread_mutex_unlock(&conn->lock);
 }
 
 uint32_t modulo_32_offset(uint32_t from, uint32_t to) {
@@ -454,7 +496,7 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
                        rtsp_conn_info *conn) {
 
   // ignore a request to flush that has been made before the first packet...
-  if (conn->packet_count == 0) {
+  if (get_conn_packet_count(conn) == 0) {
     debug_mutex_lock(&conn->flush_mutex, 1000, 1);
     conn->flush_requested = 0;
     conn->flush_rtp_timestamp = 0;
@@ -462,7 +504,7 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
   }
 
   debug_mutex_lock(&conn->ab_mutex, 30000, 0);
-  conn->packet_count++;
+  inc_conn_packet_count(conn);
   conn_lock(conn->packet_count_since_flush++);
   conn->time_of_last_audio_packet = get_absolute_time_in_fp();
   if (conn->connection_state_to_output) { // if we are supposed to be processing these packets
@@ -923,7 +965,7 @@ static abuf_t *buffer_get_frame(rtsp_conn_info *conn) {
     if (conn->ab_synced) {
       curframe = conn->audio_buffer + BUFIDX(conn->ab_read);
       
-      debug_mutex_lock(&conn->ab_mutex, 30000, 0);
+      //debug_mutex_lock(&conn->ab_mutex, 30000, 0);
       if ((conn->ab_read != conn->ab_write) &&
           (curframe->ready)) { // it could be synced and empty, under
                                // exceptional circumstances, with the
@@ -968,7 +1010,7 @@ static abuf_t *buffer_get_frame(rtsp_conn_info *conn) {
           conn->flush_rtp_timestamp = 0;
         }
       }
-      debug_mutex_unlock(&conn->ab_mutex, 0);
+      //debug_mutex_unlock(&conn->ab_mutex, 0);
       if ((curframe) && (curframe->ready)) {
         notified_buffer_empty = 0; // at least one buffer now -- diagnostic only.
         if (conn->ab_buffering) {  // if we are getting packets but not yet forwarding them to the
@@ -1636,7 +1678,7 @@ void player_thread_cleanup_handler(void *arg) {
 void *player_thread_func(void *arg) {
   rtsp_conn_info *conn = (rtsp_conn_info *)arg;
   // pthread_cleanup_push(player_thread_initial_cleanup_handler, arg);
-  conn->packet_count = 0;
+  // conn->packet_count = 0; //conn is zeroed on allocation
   conn_lock(conn->packet_count_since_flush = 0);
   conn->previous_random_number = 0;
   conn->input_bytes_per_frame = 4;
@@ -1645,7 +1687,7 @@ void *player_thread_func(void *arg) {
   conn->ab_synced = 0;
   conn->first_packet_timestamp = 0;
   conn_lock(conn->flush_requested = 0);
-  conn_lock(conn->fix_volume = 0x10000);
+  set_conn_fix_volume(conn, 0x10000);
 
   if (conn->latency == 0) {
     debug(3, "No latency has (yet) been specified. Setting 88,200 (2 seconds) frames "
@@ -1993,7 +2035,7 @@ void *player_thread_func(void *arg) {
         } else {
 
           if (((config.output->parameters == NULL) && (config.ignore_volume_control == 0) &&
-               (config.airplay_volume != 0.0)) ||
+               (get_config_airplay_volume() != 0.0)) ||
               (conn->input_bit_depth > output_bit_depth) || (config.playback_mode == ST_mono))
             conn->enable_dither = 1;
           else
@@ -2135,14 +2177,15 @@ void *player_thread_func(void *arg) {
             }
           }
           
-          int32_t cbo = seq_diff(conn->ab_read, conn->ab_write, conn->ab_read);  // int32_t from int32
-          conn_lock(conn->buffer_occupancy = cbo;
+          ab_lock(conn);
+          conn->buffer_occupancy = seq_diff(conn->ab_read, conn->ab_write, conn->ab_read); // int32_t from int32
+          ab_unlock(conn);
 
           if (conn->buffer_occupancy < minimum_buffer_occupancy)
             minimum_buffer_occupancy = conn->buffer_occupancy;
 
           if (conn->buffer_occupancy > maximum_buffer_occupancy)
-            maximum_buffer_occupancy = conn->buffer_occupancy;)
+            maximum_buffer_occupancy = conn->buffer_occupancy;
 
           // here, we want to check (a) if we are meant to do synchronisation,
           // (b) if we have a delay procedure, (c) if we can get the delay.
@@ -2444,7 +2487,7 @@ void *player_thread_func(void *arg) {
                 if (play_samples == 0)
                   debug(1, "play_samples==0 skipping it (1).");
                 else {
-                  if (conn->software_mute_enabled) {
+                  if (get_conn_software_mute_enabled(conn)) {
                     generate_zero_frames(conn->outbuf, play_samples, config.output_format,
                                          conn->enable_dither, conn->previous_random_number);
                   }
@@ -2884,7 +2927,7 @@ void player_volume_without_notification(double airplay_volume, rtsp_conn_info *c
         // debug(1,"Software attenuation set to %f, i.e %f out of 65,536, for airplay volume of
         // %f",software_attenuation,temp_fix_volume,airplay_volume);
 
-        conn_lock(conn->fix_volume = temp_fix_volume);
+        set_conn_fix_volume(conn,temp_fix_volume);
 
         if (config.loudness)
           loudness_set_volume(software_attenuation / 100);
@@ -2910,7 +2953,7 @@ void player_volume_without_notification(double airplay_volume, rtsp_conn_info *c
 
       if (config.output->mute)
         config.output->mute(0);
-      conn->software_mute_enabled = 0;
+      clear_conn_software_mute_enabled(conn);
 
       debug(2, "player_volume_without_notification: volume mode is %d, airplay volume is %f, "
                "software_attenuation: %f, hardware_attenuation: %f, muting "
@@ -2918,7 +2961,7 @@ void player_volume_without_notification(double airplay_volume, rtsp_conn_info *c
             volume_mode, airplay_volume, software_attenuation, hardware_attenuation);
     }
   }
-  config.airplay_volume = airplay_volume;
+  set_config_airplay_volume(airplay_volume);
   debug_mutex_unlock(&conn->volume_control_mutex, 3);
 }
 

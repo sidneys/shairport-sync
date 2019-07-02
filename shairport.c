@@ -1352,6 +1352,7 @@ void exit_function() {
     config_destroy(config.cfg);
   if (config.appName)
     free(config.appName);
+  pthread_mutex_destroy(&config.lock);
   // probably should be freeing malloc'ed memory here, including strdup-created strings...
 }
 
@@ -1364,6 +1365,10 @@ int main(int argc, char **argv) {
   memset(&config, 0, sizeof(config)); // also clears all strings, BTW
   fp_time_at_startup = get_absolute_time_in_fp();
   fp_time_at_last_debug_message = fp_time_at_startup;
+
+  // initialise the accessor lock on config
+  pthread_mutex_init(&config.lock, NULL);
+  
   // this is a bit weird, but necessary -- basename() may modify the argument passed in
   char *basec = strdup(argv[0]);
   char *bname = basename(basec);

@@ -77,6 +77,9 @@ typedef struct {
 typedef struct {
   // the following variables are accessed from multiple threads and so, unless you know better, you should use accessors 
   int stop;
+  uint64_t packet_count;
+  int fix_volume;
+  int software_mute_enabled; // if we don't have a real mute that we can use
   
   int connection_number;     // for debug ID purposes, nothing else...
   int resend_interval;       // this is really just for debugging
@@ -86,8 +89,6 @@ typedef struct {
                              // otherwise
   uint32_t maximum_latency;  // set if an a=max-latency: line appears in the ANNOUNCE message; zero
                              // otherwise
-  int software_mute_enabled; // if we don't have a real mute that we can use
-
   int fd;
   int authorized;   // set if a password is required and has been supplied
   char *auth_nonce; // the session nonce, if needed
@@ -130,7 +131,7 @@ typedef struct {
   int max_frame_size_change;
   int64_t previous_random_number;
   alac_file *decoder_info;
-  uint64_t packet_count;
+
   uint64_t packet_count_since_flush;
   int connection_state_to_output;
   uint64_t first_packet_time_to_play;
@@ -143,7 +144,6 @@ typedef struct {
   // mutexes and condition variables
   pthread_cond_t flowcontrol;
   pthread_mutex_t lock, ab_mutex, flush_mutex, volume_control_mutex;
-  int fix_volume;
   uint32_t timestamp_epoch, last_timestamp,
       maximum_timestamp_interval; // timestamp_epoch of zero means not initialised, could start at 2
                                   // or 1.
@@ -257,6 +257,13 @@ typedef struct {
   int enable_dither; // needed for filling silences before play actually starts
   int64_t dac_buffer_queue_minimum_length;
 } rtsp_conn_info;
+
+#define new_conn_lock \
+	  if (pthread_mutex_trylock(&conn->lock) != 0) { \
+	    debug(1,"conn_lock: cannot acquire conn->lock"); \
+	  }
+
+#define conn_unlock pthread_mutex_unlock(&conn->lock)
 
 int get_conn_stop(rtsp_conn_info *conn);
 void set_conn_stop(rtsp_conn_info *conn, int v);

@@ -100,6 +100,7 @@ enum sps_format_t {
 const char *sps_format_description_string(enum sps_format_t format);
 
 typedef struct {
+  pthread_mutex_t lock;
   config_t *cfg;
   int endianness;
   double airplay_volume; // stored here for reloading when necessary
@@ -266,6 +267,10 @@ typedef struct {
 
 } shairport_cfg;
 
+// accessors to config for multi-thread access
+double get_config_airplay_volume();
+void set_config_airplay_volume(double v);
+
 uint32_t nctohl(const uint8_t *p); // read 4 characters from *p and do ntohl on them
 uint16_t nctohs(const uint8_t *p); // read 2 characters from *p and do ntohs on them
 
@@ -316,7 +321,9 @@ volatile int debuglev;
 void die(const char *format, ...);
 void warn(const char *format, ...);
 void inform(const char *format, ...);
-void debug(int level, const char *format, ...);
+void _debug(const char *filename, const int linenumber, int level, const char *format, ...);
+
+#define debug(...) _debug(__FILE__, __LINE__, __VA_ARGS__)
 
 uint8_t *base64_dec(char *input, int *outlen);
 char *base64_enc(uint8_t *input, int length);
@@ -389,6 +396,13 @@ void pthread_cleanup_debug_mutex_unlock(void *arg);
 #define pthread_cleanup_debug_mutex_lock(mu, t, d)                                                 \
   if (_debug_mutex_lock(mu, t, #mu, __FILE__, __LINE__, d) == 0)                                   \
   pthread_cleanup_push(pthread_cleanup_debug_mutex_unlock, (void *)mu)
+  
+#define config_lock \
+	  if (pthread_mutex_trylock(&config.lock) != 0) { \
+	    debug(1,"config_lock: cannot acquire config.lock"); \
+	  }
+
+#define config_unlock pthread_mutex_unlock(&config.lock)
 
 char *get_version_string(); // mallocs a string space -- remember to free it afterwards
 

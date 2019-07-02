@@ -129,6 +129,23 @@ void log_to_stderr() { sps_log = do_sps_log; }
 
 shairport_cfg config;
 
+
+// accessors for multi-thread-access fields in the conn structure
+
+double get_config_airplay_volume() {
+  config_lock;
+  double v = config.airplay_volume;
+  config_unlock; 
+  return v; 
+}
+
+void set_config_airplay_volume(double v) {
+  config_lock;
+  config.airplay_volume = v;
+  config_unlock; 
+}
+
+
 volatile int debuglev = 0;
 
 sigset_t pselect_sigset;
@@ -224,7 +241,7 @@ void warn(const char *format, ...) {
   pthread_setcancelstate(oldState, NULL);
 }
 
-void debug(int level, const char *format, ...) {
+void _debug(const char *filename, const int linenumber, int level, const char *format, ...) {
   if (level > debuglev)
     return;
   int oldState;
@@ -245,13 +262,13 @@ void debug(int level, const char *format, ...) {
   vsnprintf(s, sizeof(s), format, args);
   va_end(args);
   if ((config.debugger_show_elapsed_time) && (config.debugger_show_relative_time))
-    sps_log(LOG_DEBUG, "|% 20.9f|% 20.9f|%s", tss, tsl, s);
+    sps_log(LOG_DEBUG, "|% 20.9f|% 20.9f|\"%s:%d\" %s", filename, linenumber, tss, tsl, s);
   else if (config.debugger_show_relative_time)
-    sps_log(LOG_DEBUG, "% 20.9f|%s", tsl, s);
+    sps_log(LOG_DEBUG, "% 20.9f|\"%s:%d\" %s", filename, linenumber, tsl, s);
   else if (config.debugger_show_elapsed_time)
-    sps_log(LOG_DEBUG, "% 20.9f|%s", tss, s);
+    sps_log(LOG_DEBUG, "% 20.9f|\"%s:%d\" %s", filename, linenumber, tss, s);
   else
-    sps_log(LOG_DEBUG, "%s", s);
+    sps_log(LOG_DEBUG, "\"%s:%d\" %s", filename, linenumber, s);
   pthread_setcancelstate(oldState, NULL);
 }
 
