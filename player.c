@@ -110,6 +110,32 @@ pthread_mutex_t conn_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // accessors for multi-thread-access fields in the conn structure
 
+uint64_t get_conn_rtp_time_of_last_resend_request_error_fp(rtsp_conn_info *conn) {
+  pthread_mutex_lock(&conn->lock);
+  uint64_t v = conn->rtp_time_of_last_resend_request_error_fp;
+  pthread_mutex_unlock(&conn->lock);
+  return v;
+}
+
+void set_conn_rtp_time_of_last_resend_request_error_fp(rtsp_conn_info *conn, uint64_t v) {
+  pthread_mutex_lock(&conn->lock);
+  conn->rtp_time_of_last_resend_request_error_fp = v;
+  pthread_mutex_unlock(&conn->lock);
+}
+
+uint32_t get_conn_latency(rtsp_conn_info *conn) {
+  pthread_mutex_lock(&conn->lock);
+  uint32_t v = conn->latency;
+  pthread_mutex_unlock(&conn->lock);
+  return v;
+}
+void set_conn_latency(rtsp_conn_info *conn, uint32_t v) {
+  pthread_mutex_lock(&conn->lock);
+  conn->latency = v;
+  pthread_mutex_unlock(&conn->lock);
+}
+
+
 int get_conn_software_mute_enabled(rtsp_conn_info *conn) {
   pthread_mutex_lock(&conn->lock);
   int v = conn->software_mute_enabled;
@@ -120,6 +146,12 @@ int get_conn_software_mute_enabled(rtsp_conn_info *conn) {
 void clear_conn_software_mute_enabled(rtsp_conn_info *conn) {
   pthread_mutex_lock(&conn->lock);
   conn->software_mute_enabled = 0;
+  pthread_mutex_unlock(&conn->lock);
+}
+
+void set_conn_software_mute_enabled(rtsp_conn_info *conn) {
+  pthread_mutex_lock(&conn->lock);
+  conn->software_mute_enabled = 1;
   pthread_mutex_unlock(&conn->lock);
 }
 
@@ -1111,7 +1143,7 @@ static abuf_t *buffer_get_frame(rtsp_conn_info *conn) {
             // setting
             // In fact, if should be some fraction of them, to allow for adjustment.
 
-            int64_t max_dac_delay = conn->latency;
+            int64_t max_dac_delay = get_conn_latency(conn);
             if (config.audio_backend_silent_lead_in_time >= 0)
               max_dac_delay =
                   (int64_t)(config.audio_backend_silent_lead_in_time * conn->input_rate);
@@ -1436,17 +1468,18 @@ static int stuff_buffer_basic_32(int32_t *inptr, int length, enum sps_format_t l
     stuffsamp =
         (rand() % (length - 2)) + 1; // ensure there's always a sample before and after the item
 
+  int fv = get_conn_fix_volume(conn); // do this to enusre only one lock/unlock per packet
   for (i = 0; i < stuffsamp; i++) { // the whole frame, if no stuffing
-    process_sample(*inptr++, &l_outptr, l_output_format, conn->fix_volume, dither, conn);
-    process_sample(*inptr++, &l_outptr, l_output_format, conn->fix_volume, dither, conn);
+    process_sample(*inptr++, &l_outptr, l_output_format, fv, dither, conn);
+    process_sample(*inptr++, &l_outptr, l_output_format, fv, dither, conn);
   };
   if (tstuff) {
     if (tstuff == 1) {
       // debug(3, "+++++++++");
       // interpolate one sample
-      process_sample(mean_32(inptr[-2], inptr[0]), &l_outptr, l_output_format, conn->fix_volume,
+      process_sample(mean_32(inptr[-2], inptr[0]), &l_outptr, l_output_format, fv,
                      dither, conn);
-      process_sample(mean_32(inptr[-1], inptr[1]), &l_outptr, l_output_format, conn->fix_volume,
+      process_sample(mean_32(inptr[-1], inptr[1]), &l_outptr, l_output_format, fv,
                      dither, conn);
     } else if (stuff == -1) {
       // debug(3, "---------");
@@ -1461,8 +1494,8 @@ static int stuff_buffer_basic_32(int32_t *inptr, int length, enum sps_format_t l
       remainder = remainder + tstuff; // don't run over the correct end of the output buffer
 
     for (i = stuffsamp; i < remainder; i++) {
-      process_sample(*inptr++, &l_outptr, l_output_format, conn->fix_volume, dither, conn);
-      process_sample(*inptr++, &l_outptr, l_output_format, conn->fix_volume, dither, conn);
+      process_sample(*inptr++, &l_outptr, l_output_format, fv, dither, conn);
+      process_sample(*inptr++, &l_outptr, l_output_format, fv, dither, conn);
     }
   }
   conn->amountStuffed = tstuff;
@@ -1491,6 +1524,7 @@ int stuff_buffer_soxr_32(int32_t *inptr, int32_t *scratchBuffer, int length,
   if (scratchBuffer == NULL) {
     die("soxr scratchBuffer not initialised.");
   }
+  int fv = get_conn_fix_volume(conn);
   packets_processed++;
   int tstuff = stuff;
   if ((stuff > 1) || (stuff < -1) || (length < 100)) {
@@ -1563,8 +1597,8 @@ int stuff_buffer_soxr_32(int32_t *inptr, int32_t *scratchBuffer, int length,
     ip = scratchBuffer;
     char *l_outptr = outptr;
     for (i = 0; i < length + tstuff; i++) {
-      process_sample(*ip++, &l_outptr, l_output_format, conn->fix_volume, dither, conn);
-      process_sample(*ip++, &l_outptr, l_output_format, conn->fix_volume, dither, conn);
+      process_sample(*ip++, &l_outptr, l_output_format, fv, dither, conn);
+      process_sample(*ip++, &l_outptr, l_output_format, fv, dither, conn);
     };
 
   } else { // the whole frame, if no stuffing
@@ -1575,8 +1609,8 @@ int stuff_buffer_soxr_32(int32_t *inptr, int32_t *scratchBuffer, int length,
     int i;
 
     for (i = 0; i < length; i++) {
-      process_sample(*ip++, &l_outptr, l_output_format, conn->fix_volume, dither, conn);
-      process_sample(*ip++, &l_outptr, l_output_format, conn->fix_volume, dither, conn);
+      process_sample(*ip++, &l_outptr, l_output_format, fv, dither, conn);
+      process_sample(*ip++, &l_outptr, l_output_format, fv, dither, conn);
     };
   }
 
@@ -2834,7 +2868,7 @@ void player_volume_without_notification(double airplay_volume, rtsp_conn_info *c
               "hardware mute is enabled.",
               volume_mode, airplay_volume);
       else {
-        conn->software_mute_enabled = 1;
+        set_conn_software_mute_enabled(conn);
         debug(2,
               "player_volume_without_notification: volume mode is %d, airplay_volume is %f, "
               "software mute is enabled.",

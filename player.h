@@ -81,11 +81,12 @@ typedef struct {
   uint64_t packet_count;
   int fix_volume;
   int software_mute_enabled; // if we don't have a real mute that we can use
+  uint32_t latency;         // the actual latency used for this play session
+  uint64_t rtp_time_of_last_resend_request_error_fp;
 
   int connection_number;    // for debug ID purposes, nothing else...
   int resend_interval;      // this is really just for debugging
   int AirPlayVersion;       // zero if not an AirPlay session. Used to help calculate latency
-  uint32_t latency;         // the actual latency used for this play session
   uint32_t minimum_latency; // set if an a=min-latency: line appears in the ANNOUNCE message; zero
                             // otherwise
   uint32_t maximum_latency; // set if an a=max-latency: line appears in the ANNOUNCE message; zero
@@ -177,8 +178,7 @@ typedef struct {
   // RTP stuff
   // only one RTP session can be active at a time.
   int rtp_running;
-  uint64_t rtp_time_of_last_resend_request_error_fp;
-
+ 
   char client_ip_string[INET6_ADDRSTRLEN]; // the ip string pointing to the client
   char self_ip_string[INET6_ADDRSTRLEN];   // the ip string being used by this program -- it
                                            // could be one of many, so we need to know it
@@ -265,6 +265,14 @@ typedef struct {
   }
 
 #define conn_unlock pthread_mutex_unlock(&conn->lock)
+
+// public accessors
+
+uint64_t get_conn_rtp_time_of_last_resend_request_error_fp(rtsp_conn_info *conn);
+void set_conn_rtp_time_of_last_resend_request_error_fp(rtsp_conn_info *conn, uint64_t v);
+
+uint32_t get_conn_latency(rtsp_conn_info *conn);
+void set_conn_latency(rtsp_conn_info *conn, uint32_t v);
 
 int get_conn_stop(rtsp_conn_info *conn);
 void set_conn_stop(rtsp_conn_info *conn, int v);

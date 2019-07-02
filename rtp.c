@@ -370,8 +370,8 @@ void *rtp_control_receiver(void *arg) {
                      la, max_frames, conn->latency);
               } else {
 
-                if (la != conn->latency) {
-                  conn_lock(conn->latency = la);
+                if (la != get_conn_latency(conn)) {
+                  set_conn_latency(conn,la);
                   debug(3,
                         "New latency detected: %" PRIu32 ", sync latency: %" PRIu32
                         ", minimum latency: %" PRIu32 ", maximum "
@@ -1226,8 +1226,8 @@ void rtp_request_resend(seq_t first, uint32_t count, rtsp_conn_info *conn) {
 #endif
     uint64_t time_of_sending_fp = get_absolute_time_in_fp();
     uint64_t resend_error_backoff_time = (uint64_t)1 << (32 - 4); // one sixteenth of a second
-    if ((conn->rtp_time_of_last_resend_request_error_fp == 0) ||
-        ((time_of_sending_fp - conn->rtp_time_of_last_resend_request_error_fp) >
+    if ((get_conn_rtp_time_of_last_resend_request_error_fp(conn) == 0) ||
+        ((time_of_sending_fp - get_conn_rtp_time_of_last_resend_request_error_fp(conn)) >
          resend_error_backoff_time)) {
       if ((config.diagnostic_drop_packet_fraction == 0.0) ||
           (drand48() > config.diagnostic_drop_packet_fraction)) {
@@ -1249,9 +1249,9 @@ void rtp_request_resend(seq_t first, uint32_t count, rtsp_conn_info *conn) {
                 "Error %d using sendto to an audio socket: \"%s\". Backing off for 1/16th of a "
                 "second.",
                 errno, em);
-          conn->rtp_time_of_last_resend_request_error_fp = time_of_sending_fp;
+          set_conn_rtp_time_of_last_resend_request_error_fp(conn,time_of_sending_fp);
         } else {
-          conn->rtp_time_of_last_resend_request_error_fp = 0;
+          set_conn_rtp_time_of_last_resend_request_error_fp(conn,0);
         }
 
       } else {

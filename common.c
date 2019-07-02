@@ -304,7 +304,7 @@ void _inform(const char *filename, const int linenumber, const char *format, ...
     uint64_t divisor = (uint64_t)1 << 32;
     s = generate_preliminary_string(b, sizeof(b), 1.0 * time_since_start / divisor,
                                     1.0 * time_since_last_debug_message / divisor, filename,
-                                    linenumber, " *note: ");
+                                    linenumber, " ");
   } else {
     s = b;
   }
