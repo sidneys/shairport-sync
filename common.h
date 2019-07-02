@@ -177,6 +177,7 @@ typedef struct {
   int logOutputLevel;              // log output level
   int debugger_show_elapsed_time;  // in the debug message, display the time since startup
   int debugger_show_relative_time; // in the debug message, display the time since the last one
+  int debugger_show_file_and_line; // in the debug message, display the filename and line number
   int statistics_requested, use_negotiated_latencies;
   enum playback_mode_type playback_mode;
   char *cmd_start, *cmd_stop, *cmd_set_volume, *cmd_unfixable;
@@ -318,12 +319,15 @@ uint16_t nextFreeUDPPort();
 
 volatile int debuglev;
 
-void die(const char *format, ...);
-void warn(const char *format, ...);
-void inform(const char *format, ...);
+void _die(const char *filename, const int linenumber, const char *format, ...);
+void _warn(const char *filename, const int linenumber, const char *format, ...);
+void _inform(const char *filename, const int linenumber, const char *format, ...);
 void _debug(const char *filename, const int linenumber, int level, const char *format, ...);
 
+#define die(...) _die(__FILE__, __LINE__, __VA_ARGS__)
 #define debug(...) _debug(__FILE__, __LINE__, __VA_ARGS__)
+#define warn(...) _warn(__FILE__, __LINE__, __VA_ARGS__)
+#define inform(...) _inform(__FILE__, __LINE__, __VA_ARGS__)
 
 uint8_t *base64_dec(char *input, int *outlen);
 char *base64_enc(uint8_t *input, int length);

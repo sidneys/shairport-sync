@@ -1422,8 +1422,10 @@ int main(int argc, char **argv) {
   // config.statistics_requested = 0; // don't print stats in the log
   // config.userSuppliedLatency = 0; // zero means none supplied
 
+  config.debugger_show_file_and_line =
+      1;                         // by default, log the file name and line number
   config.debugger_show_relative_time =
-      1;                         // by default, log the  time back to the previous debug message
+      1;                         // by default, log the time back to the previous debug message
   config.resyncthreshold = 0.05; // 50 ms
   config.timeout = 120; // this number of seconds to wait for [more] audio before switching to idle.
   config.tolerance =

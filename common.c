@@ -181,63 +181,82 @@ int get_requested_connection_state_to_output() { return requested_connection_sta
 
 void set_requested_connection_state_to_output(int v) { requested_connection_state_to_output = v; }
 
-void die(const char *format, ...) {
+char *generate_preliminary_string(char *buffer,size_t buffer_length, double tss, double tsl, const char *filename, const int linenumber, const char *prefix) {
+  size_t space_remaining = buffer_length;
+  char *insertion_point = buffer;
+  if (config.debugger_show_elapsed_time) {
+    snprintf(insertion_point, space_remaining, "% 20.9f", tss);
+    insertion_point = insertion_point + strlen(insertion_point);
+    space_remaining = space_remaining - strlen(insertion_point);
+  }
+  if (config.debugger_show_relative_time) {
+    snprintf(insertion_point, space_remaining, "% 20.9f", tsl);
+    insertion_point = insertion_point + strlen(insertion_point);
+    space_remaining = space_remaining - strlen(insertion_point);
+  }
+  if (config.debugger_show_file_and_line) {
+    snprintf(insertion_point, space_remaining, " \"%s:%d\"", filename, linenumber);
+    insertion_point = insertion_point + strlen(insertion_point);
+    space_remaining = space_remaining - strlen(insertion_point);
+  }
+
+  if (prefix) {
+    snprintf(insertion_point, space_remaining, "%s", prefix);
+    insertion_point = insertion_point + strlen(insertion_point);
+  }
+  return insertion_point;
+}
+
+void _die(const char *filename, const int linenumber, const char *format, ...) {
   int oldState;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
-  char s[1024];
-  s[0] = 0;
-  pthread_mutex_lock(&debug_timing_lock);
-  uint64_t time_now = get_absolute_time_in_fp();
-  uint64_t time_since_start = time_now - fp_time_at_startup;
-  uint64_t time_since_last_debug_message = time_now - fp_time_at_last_debug_message;
-  fp_time_at_last_debug_message = time_now;
-  pthread_mutex_unlock(&debug_timing_lock);
-  uint64_t divisor = (uint64_t)1 << 32;
-  double tss = 1.0 * time_since_start / divisor;
-  double tsl = 1.0 * time_since_last_debug_message / divisor;
+  char b[1024];
+  b[0] = 0;
+  char *s;
+  if (debuglev) {
+    pthread_mutex_lock(&debug_timing_lock);
+    uint64_t time_now = get_absolute_time_in_fp();
+    uint64_t time_since_start = time_now - fp_time_at_startup;
+    uint64_t time_since_last_debug_message = time_now - fp_time_at_last_debug_message;
+    fp_time_at_last_debug_message = time_now;
+    pthread_mutex_unlock(&debug_timing_lock);
+    uint64_t divisor = (uint64_t)1 << 32;
+    s = generate_preliminary_string(b,sizeof(b), 1.0 * time_since_start / divisor, 1.0 * time_since_last_debug_message / divisor, filename, linenumber, " *fatal error: ");
+  } else {
+    s = b;
+  }
   va_list args;
   va_start(args, format);
-  vsnprintf(s, sizeof(s), format, args);
+  vsnprintf(s, sizeof(b) - (s - b), format, args);
   va_end(args);
-
-  if ((debuglev) && (config.debugger_show_elapsed_time) && (config.debugger_show_relative_time))
-    sps_log(LOG_ERR, "|% 20.9f|% 20.9f|*fatal error: %s", tss, tsl, s);
-  else if ((debuglev) && (config.debugger_show_relative_time))
-    sps_log(LOG_ERR, "% 20.9f|*fatal error: %s", tsl, s);
-  else if ((debuglev) && (config.debugger_show_elapsed_time))
-    sps_log(LOG_ERR, "% 20.9f|*fatal error: %s", tss, s);
-  else
-    sps_log(LOG_ERR, "fatal error: %s", s);
+  sps_log(LOG_ERR, "%s", b);
   pthread_setcancelstate(oldState, NULL);
   abort(); // exit() doesn't always work, by heaven.
 }
 
-void warn(const char *format, ...) {
+void _warn(const char *filename, const int linenumber, const char *format, ...) {
   int oldState;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
-  char s[1024];
-  s[0] = 0;
-  pthread_mutex_lock(&debug_timing_lock);
-  uint64_t time_now = get_absolute_time_in_fp();
-  uint64_t time_since_start = time_now - fp_time_at_startup;
-  uint64_t time_since_last_debug_message = time_now - fp_time_at_last_debug_message;
-  fp_time_at_last_debug_message = time_now;
-  pthread_mutex_unlock(&debug_timing_lock);
-  uint64_t divisor = (uint64_t)1 << 32;
-  double tss = 1.0 * time_since_start / divisor;
-  double tsl = 1.0 * time_since_last_debug_message / divisor;
+  char b[1024];
+  b[0] = 0;
+  char *s;
+  if (debuglev) {
+    pthread_mutex_lock(&debug_timing_lock);
+    uint64_t time_now = get_absolute_time_in_fp();
+    uint64_t time_since_start = time_now - fp_time_at_startup;
+    uint64_t time_since_last_debug_message = time_now - fp_time_at_last_debug_message;
+    fp_time_at_last_debug_message = time_now;
+    pthread_mutex_unlock(&debug_timing_lock);
+    uint64_t divisor = (uint64_t)1 << 32;
+    s = generate_preliminary_string(b,sizeof(b), 1.0 * time_since_start / divisor, 1.0 * time_since_last_debug_message / divisor, filename, linenumber, " *warning: ");
+  } else {
+    s = b;
+  }
   va_list args;
   va_start(args, format);
-  vsnprintf(s, sizeof(s), format, args);
+  vsnprintf(s, sizeof(b) - (s - b), format, args);
   va_end(args);
-  if ((debuglev) && (config.debugger_show_elapsed_time) && (config.debugger_show_relative_time))
-    sps_log(LOG_WARNING, "|% 20.9f|% 20.9f|*warning: %s", tss, tsl, s);
-  else if ((debuglev) && (config.debugger_show_relative_time))
-    sps_log(LOG_WARNING, "% 20.9f|*warning: %s", tsl, s);
-  else if ((debuglev) && (config.debugger_show_elapsed_time))
-    sps_log(LOG_WARNING, "% 20.9f|*warning: %s", tss, s);
-  else
-    sps_log(LOG_WARNING, "%s", s);
+  sps_log(LOG_WARNING, "%s", b);
   pthread_setcancelstate(oldState, NULL);
 }
 
@@ -246,58 +265,47 @@ void _debug(const char *filename, const int linenumber, int level, const char *f
     return;
   int oldState;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
-  char s[1024];
-  s[0] = 0;
+  char b[1024];
+  b[0] = 0;
   pthread_mutex_lock(&debug_timing_lock);
   uint64_t time_now = get_absolute_time_in_fp();
   uint64_t time_since_start = time_now - fp_time_at_startup;
   uint64_t time_since_last_debug_message = time_now - fp_time_at_last_debug_message;
   fp_time_at_last_debug_message = time_now;
   pthread_mutex_unlock(&debug_timing_lock);
-  uint64_t divisor = (uint64_t)1 << 32;
-  double tss = 1.0 * time_since_start / divisor;
-  double tsl = 1.0 * time_since_last_debug_message / divisor;
+  uint64_t divisor = (uint64_t)1 << 32;  
+  char *s = generate_preliminary_string(b,sizeof(b), 1.0 * time_since_start / divisor, 1.0 * time_since_last_debug_message / divisor, filename, linenumber, " ");
   va_list args;
   va_start(args, format);
-  vsnprintf(s, sizeof(s), format, args);
+  vsnprintf(s, sizeof(b) - (s - b), format, args);
   va_end(args);
-  if ((config.debugger_show_elapsed_time) && (config.debugger_show_relative_time))
-    sps_log(LOG_DEBUG, "|% 20.9f|% 20.9f|\"%s:%d\" %s", filename, linenumber, tss, tsl, s);
-  else if (config.debugger_show_relative_time)
-    sps_log(LOG_DEBUG, "% 20.9f|\"%s:%d\" %s", filename, linenumber, tsl, s);
-  else if (config.debugger_show_elapsed_time)
-    sps_log(LOG_DEBUG, "% 20.9f|\"%s:%d\" %s", filename, linenumber, tss, s);
-  else
-    sps_log(LOG_DEBUG, "\"%s:%d\" %s", filename, linenumber, s);
+  sps_log(LOG_DEBUG, "%s", b);
   pthread_setcancelstate(oldState, NULL);
 }
 
-void inform(const char *format, ...) {
+void _inform(const char *filename, const int linenumber, const char *format, ...) {
   int oldState;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
-  char s[1024];
-  s[0] = 0;
-  pthread_mutex_lock(&debug_timing_lock);
-  uint64_t time_now = get_absolute_time_in_fp();
-  uint64_t time_since_start = time_now - fp_time_at_startup;
-  uint64_t time_since_last_debug_message = time_now - fp_time_at_last_debug_message;
-  fp_time_at_last_debug_message = time_now;
-  pthread_mutex_unlock(&debug_timing_lock);
-  uint64_t divisor = (uint64_t)1 << 32;
-  double tss = 1.0 * time_since_start / divisor;
-  double tsl = 1.0 * time_since_last_debug_message / divisor;
+  char b[1024];
+  b[0] = 0;
+  char *s;
+  if (debuglev) {
+    pthread_mutex_lock(&debug_timing_lock);
+    uint64_t time_now = get_absolute_time_in_fp();
+    uint64_t time_since_start = time_now - fp_time_at_startup;
+    uint64_t time_since_last_debug_message = time_now - fp_time_at_last_debug_message;
+    fp_time_at_last_debug_message = time_now;
+    pthread_mutex_unlock(&debug_timing_lock);
+    uint64_t divisor = (uint64_t)1 << 32;
+    s = generate_preliminary_string(b,sizeof(b), 1.0 * time_since_start / divisor, 1.0 * time_since_last_debug_message / divisor, filename, linenumber, " *note: ");
+  } else {
+    s = b;
+  }
   va_list args;
   va_start(args, format);
-  vsnprintf(s, sizeof(s), format, args);
+  vsnprintf(s, sizeof(b) - (s - b), format, args);
   va_end(args);
-  if ((debuglev) && (config.debugger_show_elapsed_time) && (config.debugger_show_relative_time))
-    sps_log(LOG_INFO, "|% 20.9f|% 20.9f|%s", tss, tsl, s);
-  else if ((debuglev) && (config.debugger_show_relative_time))
-    sps_log(LOG_INFO, "% 20.9f|%s", tsl, s);
-  else if ((debuglev) && (config.debugger_show_elapsed_time))
-    sps_log(LOG_INFO, "% 20.9f|%s", tss, s);
-  else
-    sps_log(LOG_INFO, "%s", s);
+  sps_log(LOG_INFO, "%s", b);
   pthread_setcancelstate(oldState, NULL);
 }
 
