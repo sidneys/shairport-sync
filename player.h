@@ -75,20 +75,21 @@ typedef struct {
 } stream_cfg;
 
 typedef struct {
-  // the following variables are accessed from multiple threads and so, unless you know better, you should use accessors 
+  // the following variables are accessed from multiple threads and so, unless you know better, you
+  // should use accessors
   int stop;
   uint64_t packet_count;
   int fix_volume;
   int software_mute_enabled; // if we don't have a real mute that we can use
-  
-  int connection_number;     // for debug ID purposes, nothing else...
-  int resend_interval;       // this is really just for debugging
-  int AirPlayVersion;        // zero if not an AirPlay session. Used to help calculate latency
-  uint32_t latency;          // the actual latency used for this play session
-  uint32_t minimum_latency;  // set if an a=min-latency: line appears in the ANNOUNCE message; zero
-                             // otherwise
-  uint32_t maximum_latency;  // set if an a=max-latency: line appears in the ANNOUNCE message; zero
-                             // otherwise
+
+  int connection_number;    // for debug ID purposes, nothing else...
+  int resend_interval;      // this is really just for debugging
+  int AirPlayVersion;       // zero if not an AirPlay session. Used to help calculate latency
+  uint32_t latency;         // the actual latency used for this play session
+  uint32_t minimum_latency; // set if an a=min-latency: line appears in the ANNOUNCE message; zero
+                            // otherwise
+  uint32_t maximum_latency; // set if an a=max-latency: line appears in the ANNOUNCE message; zero
+                            // otherwise
   int fd;
   int authorized;   // set if a password is required and has been supplied
   char *auth_nonce; // the session nonce, if needed
@@ -258,10 +259,10 @@ typedef struct {
   int64_t dac_buffer_queue_minimum_length;
 } rtsp_conn_info;
 
-#define new_conn_lock \
-	  if (pthread_mutex_trylock(&conn->lock) != 0) { \
-	    debug(1,"conn_lock: cannot acquire conn->lock"); \
-	  }
+#define new_conn_lock                                                                              \
+  if (pthread_mutex_trylock(&conn->lock) != 0) {                                                   \
+    debug(1, "conn_lock: cannot acquire conn->lock");                                              \
+  }
 
 #define conn_unlock pthread_mutex_unlock(&conn->lock)
 

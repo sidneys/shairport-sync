@@ -292,10 +292,11 @@ void *player_watchdog_thread_code(void *arg) {
           conn->watchdog_barks++;
           if (conn->watchdog_barks == 1) {
             // debuglev = 3; // tell us everything.
-            debug(1, "Connection %d: As Yeats almost said, \"Too long a silence / can make a stone "
-                     "of the heart\".",
+            debug(1,
+                  "Connection %d: As Yeats almost said, \"Too long a silence / can make a stone "
+                  "of the heart\".",
                   conn->connection_number);
-            set_conn_stop(conn,1);
+            set_conn_stop(conn, 1);
             pthread_cancel(conn->thread);
           } else if (conn->watchdog_barks == 3) {
             if ((config.cmd_unfixable) && (conn->unfixable_error_reported == 0)) {
@@ -847,9 +848,10 @@ void handle_options(rtsp_conn_info *conn, __attribute__((unused)) rtsp_message *
                     rtsp_message *resp) {
   debug(3, "Connection %d: OPTIONS", conn->connection_number);
   resp->respcode = 200;
-  msg_add_header(resp, "Public", "ANNOUNCE, SETUP, RECORD, "
-                                 "PAUSE, FLUSH, TEARDOWN, "
-                                 "OPTIONS, GET_PARAMETER, SET_PARAMETER");
+  msg_add_header(resp, "Public",
+                 "ANNOUNCE, SETUP, RECORD, "
+                 "PAUSE, FLUSH, TEARDOWN, "
+                 "OPTIONS, GET_PARAMETER, SET_PARAMETER");
 }
 
 void handle_teardown(rtsp_conn_info *conn, __attribute__((unused)) rtsp_message *req,
@@ -990,8 +992,9 @@ void handle_setup(rtsp_conn_info *conn, rtsp_message *req, rtsp_message *resp) {
             msg_add_header(resp, "Session", "1");
 
             resp->respcode = 200; // it all worked out okay
-            debug(1, "Connection %d: SETUP DACP-ID \"%s\" from %s to %s with UDP ports Control: "
-                     "%d, Timing: %d and Audio: %d.",
+            debug(1,
+                  "Connection %d: SETUP DACP-ID \"%s\" from %s to %s with UDP ports Control: "
+                  "%d, Timing: %d and Audio: %d.",
                   conn->connection_number, conn->dacp_id, &conn->client_ip_string,
                   &conn->self_ip_string, conn->local_control_port, conn->local_timing_port,
                   conn->local_audio_port);
@@ -1586,7 +1589,7 @@ static void handle_set_parameter(rtsp_conn_info *conn, rtsp_message *req, rtsp_m
   char *ct = msg_get_header(req, "Content-Type");
 
   if (ct) {
-// debug(2, "SET_PARAMETER Content-Type:\"%s\".", ct);
+    // debug(2, "SET_PARAMETER Content-Type:\"%s\".", ct);
 
 #ifdef CONFIG_METADATA
     // It seems that the rtptime of the message is used as a kind of an ID that
@@ -1691,7 +1694,7 @@ static void handle_announce(rtsp_conn_info *conn, rtsp_message *req, rtsp_messag
   } else if (config.allow_session_interruption == 1) {
     debug(2, "Connection %d: ANNOUNCE: asking playing connection %d to shut down.",
           conn->connection_number, playing_conn->connection_number);
-    set_conn_stop(playing_conn,1);
+    set_conn_stop(playing_conn, 1);
     interrupting_current_session = 1;
     should_wait = 1;
     pthread_cancel(playing_conn->thread); // asking the RTSP thread to exit
@@ -2279,7 +2282,8 @@ void rtsp_conversation_thread_cleanup_function(void *arg) {
 
   debug(2, "Connection %d: terminated.", conn->connection_number);
   conn_lock(conn->running = 0);
-  pthread_mutex_destroy(&conn->lock); // even though this was created by this thread's creator, not the thread itself.
+  pthread_mutex_destroy(
+      &conn->lock); // even though this was created by this thread's creator, not the thread itself.
   pthread_setcancelstate(oldState, NULL);
 }
 
@@ -2342,8 +2346,9 @@ static void *rtsp_conversation_thread_func(void *pconn) {
       if (strcmp(req->method, "OPTIONS") !=
           0) // the options message is very common, so don't log it until level 3
         debug_level = 2;
-      debug(debug_level, "Connection %d: Received an RTSP Packet of type \"%s\":",
-            conn->connection_number, req->method),
+      debug(debug_level,
+            "Connection %d: Received an RTSP Packet of type \"%s\":", conn->connection_number,
+            req->method),
           debug_print_msg_headers(debug_level, req);
 
       apple_challenge(conn->fd, req, resp);
@@ -2402,8 +2407,9 @@ static void *rtsp_conversation_thread_func(void *pconn) {
       if (get_conn_stop(conn) == 0) {
         int err = msg_write_response(conn->fd, resp);
         if (err) {
-          debug(1, "Connection %d: Unable to write an RTSP message response. Terminating the "
-                   "connection.",
+          debug(1,
+                "Connection %d: Unable to write an RTSP message response. Terminating the "
+                "connection.",
                 conn->connection_number);
           struct linger so_linger;
           so_linger.l_onoff = 1; // "true"
@@ -2411,7 +2417,7 @@ static void *rtsp_conversation_thread_func(void *pconn) {
           err = setsockopt(conn->fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof so_linger);
           if (err)
             debug(1, "Could not set the RTSP socket to abort due to a write error on closing.");
-          set_conn_stop(conn,1);
+          set_conn_stop(conn, 1);
           // if (debuglev >= 1)
           //  debuglev = 3; // see what happens next
         }
@@ -2456,7 +2462,7 @@ static void *rtsp_conversation_thread_func(void *pconn) {
       }
       if (tstop) {
         debug(3, "Connection %d: Terminate RTSP connection.", conn->connection_number);
-        set_conn_stop(conn,1);
+        set_conn_stop(conn, 1);
       }
     }
   }
@@ -2693,9 +2699,9 @@ void rtsp_listen_loop(void) {
       //      conn->stop = 0; // record's memory has been zeroed
       //      conn->authorized = 0; // record's memory has been zeroed
       // fcntl(conn->fd, F_SETFL, O_NONBLOCK);
-      
+
       // create an access lock for the structure itself
-        pthread_mutex_init(&conn->lock, NULL);
+      pthread_mutex_init(&conn->lock, NULL);
 
       ret = pthread_create(&conn->thread, NULL, rtsp_conversation_thread_func,
                            conn); // also acts as a memory barrier

@@ -343,8 +343,9 @@ void actual_close_alsa_device() {
   if (alsa_handle) {
     int derr;
     if ((derr = snd_pcm_hw_free(alsa_handle)))
-      debug(1, "Error %d (\"%s\") freeing the output device hardware while "
-               "closing it.",
+      debug(1,
+            "Error %d (\"%s\") freeing the output device hardware while "
+            "closing it.",
             derr, snd_strerror(derr));
 
     if ((derr = snd_pcm_close(alsa_handle)))
@@ -359,7 +360,10 @@ void actual_close_alsa_device() {
 // The lowest rate that the DAC is capable of is chosen.
 
 unsigned int auto_speed_output_rates[] = {
-    44100, 88200, 176400, 352800,
+    44100,
+    88200,
+    176400,
+    352800,
 };
 
 // This array is of all the formats known to Shairport Sync, in order of the SPS_FORMAT definitions,
@@ -708,9 +712,10 @@ int actual_open_alsa_device(int do_auto_setup) {
           buffer_size);
     }
     */
-    debug(1, "The alsa buffer is smaller (%lu bytes) than the desired backend "
-             "buffer "
-             "length (%ld) you have chosen.",
+    debug(1,
+          "The alsa buffer is smaller (%lu bytes) than the desired backend "
+          "buffer "
+          "length (%ld) you have chosen.",
           actual_buffer_length, config.audio_backend_buffer_desired_length);
   }
 
@@ -930,8 +935,9 @@ int do_alsa_device_init_if_needed() {
               snd_ctl_elem_id_set_name(elem_id, alsa_mix_ctrl);
 
               if (snd_ctl_get_dB_range(ctl, elem_id, &alsa_mix_mindb, &alsa_mix_maxdb) == 0) {
-                debug(1, "alsa: hardware mixer \"%s\" selected, with dB volume "
-                         "from %f to %f.",
+                debug(1,
+                      "alsa: hardware mixer \"%s\" selected, with dB volume "
+                      "from %f to %f.",
                       alsa_mix_ctrl, (1.0 * alsa_mix_mindb) / 100.0,
                       (1.0 * alsa_mix_maxdb) / 100.0);
                 has_softvol = 1;
@@ -1136,8 +1142,10 @@ static int init(int argc, char **argv) {
              "\"S16\", \"S24\", \"S24_LE\", \"S24_BE\", "
              "\"S24_3LE\", \"S24_3BE\" or "
              "\"S32\", \"S32_LE\", \"S32_BE\". It remains set to \"%s\".",
-             str, config.output_format_auto_requested == 1 ? "auto" : sps_format_description_string(
-                                                                          config.output_format));
+             str,
+             config.output_format_auto_requested == 1
+                 ? "auto"
+                 : sps_format_description_string(config.output_format));
       }
     }
 
@@ -1287,9 +1295,9 @@ static int init(int argc, char **argv) {
         warn("Invalid use_precision_timing option choice \"%s\". It should be "
              "\"yes\", \"auto\" or \"no\". "
              "It remains set to \"%s\".",
-             config.use_precision_timing == YNA_NO ? "no" : config.use_precision_timing == YNA_AUTO
-                                                                ? "auto"
-                                                                : "yes");
+             config.use_precision_timing == YNA_NO
+                 ? "no"
+                 : config.use_precision_timing == YNA_AUTO ? "auto" : "yes");
       }
     }
 
@@ -1521,14 +1529,16 @@ int precision_delay_and_status(snd_pcm_state_t *state, snd_pcm_sframes_t *delay,
 
           if (((update_timestamp_ns - stall_monitor_start_time) > stall_monitor_error_threshold) ||
               ((time_now_ns - stall_monitor_start_time) > stall_monitor_error_threshold)) {
-            debug(2, "DAC seems to have stalled with time_now_ns: %" PRIX64
-                     ", update_timestamp_ns: %" PRIX64 ", stall_monitor_start_time %" PRIX64
-                     ", stall_monitor_error_threshold %" PRIX64 ".",
+            debug(2,
+                  "DAC seems to have stalled with time_now_ns: %" PRIX64
+                  ", update_timestamp_ns: %" PRIX64 ", stall_monitor_start_time %" PRIX64
+                  ", stall_monitor_error_threshold %" PRIX64 ".",
                   time_now_ns, update_timestamp_ns, stall_monitor_start_time,
                   stall_monitor_error_threshold);
-            debug(2, "DAC seems to have stalled with time_now: %lx,%lx"
-                     ", update_timestamp: %lx,%lx, stall_monitor_start_time %" PRIX64
-                     ", stall_monitor_error_threshold %" PRIX64 ".",
+            debug(2,
+                  "DAC seems to have stalled with time_now: %lx,%lx"
+                  ", update_timestamp: %lx,%lx, stall_monitor_start_time %" PRIX64
+                  ", stall_monitor_error_threshold %" PRIX64 ".",
                   tn.tv_sec, tn.tv_nsec, update_timestamp.tv_sec, update_timestamp.tv_nsec,
                   stall_monitor_start_time, stall_monitor_error_threshold);
             ret = sps_extra_code_output_stalled;
@@ -1693,8 +1703,9 @@ int do_play(void *buf, int samples) {
       }
     }
   } else {
-    debug(1, "alsa: device status returns fault status %d and SND_PCM_STATE_* "
-             "%d  for play.",
+    debug(1,
+          "alsa: device status returns fault status %d and SND_PCM_STATE_* "
+          "%d  for play.",
           ret, state);
     frame_index = 0;
     measurement_data_is_valid = 0;
@@ -2006,8 +2017,9 @@ void *alsa_buffer_monitor_thread_code(__attribute__((unused)) void *arg) {
               error_count++;
               char errorstring[1024];
               strerror_r(-ret, (char *)errorstring, sizeof(errorstring));
-              debug(2, "alsa: alsa_buffer_monitor_thread_code error %d (\"%s\") writing %d samples "
-                       "to alsa device -- %d errors in %d trials.",
+              debug(2,
+                    "alsa: alsa_buffer_monitor_thread_code error %d (\"%s\") writing %d samples "
+                    "to alsa device -- %d errors in %d trials.",
                     ret, (char *)errorstring, frames_of_silence, error_count, frame_count);
               if ((error_count > 40) && (frame_count < 100)) {
                 warn("disable_standby_mode has been turned off because too many underruns "

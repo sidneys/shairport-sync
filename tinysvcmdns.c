@@ -1736,7 +1736,8 @@ void mdnsd_stop(struct mdnsd *s) {
   assert(s != NULL);
 
   struct timeval tv = {
-      .tv_sec = 0, .tv_usec = 500 * 1000,
+      .tv_sec = 0,
+      .tv_usec = 500 * 1000,
   };
 
   s->stop_flag = 1;

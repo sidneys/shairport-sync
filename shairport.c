@@ -223,7 +223,8 @@ void *soxr_time_check(__attribute__((unused)) void *arg) {
       (((get_absolute_time_in_fp() - soxr_start_time) * 1000000) >> 32) * 1.0;
   // free(outbuffer);
   // free(inbuffer);
-  conn_lock(config.soxr_delay_index = (int)(0.9 + soxr_execution_time_us / (number_of_iterations * 1000)));
+  conn_lock(config.soxr_delay_index =
+                (int)(0.9 + soxr_execution_time_us / (number_of_iterations * 1000)));
   debug(2, "soxr_delay_index: %d.", config.soxr_delay_index);
   if ((config.packet_stuffing == ST_soxr) &&
       (config.soxr_delay_index > config.soxr_delay_threshold))
@@ -434,9 +435,9 @@ int parse_options(int argc, char **argv) {
                                     // automatically.
   config.volume_range_hw_priority =
       0; // if combining software and hardware volume control, give the software priority
-// i.e. when reducing volume, reduce the sw first before reducing the software.
-// this is because some hw mixers mute at the bottom of their range, and they don't always advertise
-// this fact
+  // i.e. when reducing volume, reduce the sw first before reducing the software.
+  // this is because some hw mixers mute at the bottom of their range, and they don't always
+  // advertise this fact
 
 #ifdef CONFIG_METADATA_HUB
   config.cover_art_cache_dir = "/tmp/shairport-sync/.cache/coverart";
@@ -1128,7 +1129,7 @@ int parse_options(int argc, char **argv) {
 
   poptFreeContext(optCon);
 
-// here, we are finally finished reading the options
+  // here, we are finally finished reading the options
 
 #ifdef CONFIG_LIBDAEMON
   if ((daemonisewith) && (daemonisewithout))
@@ -1142,8 +1143,9 @@ int parse_options(int argc, char **argv) {
 #else
   /* Check if we are called with -d or --daemon or -j or justDaemoniseNoPIDFile options*/
   if ((daemonisewith != 0) || (daemonisewithout != 0)) {
-    fprintf(stderr, "%s was built without libdaemon, so does not support daemonisation using the "
-                    "-d, --deamon, -j or --justDaemoniseNoPIDFile options\n",
+    fprintf(stderr,
+            "%s was built without libdaemon, so does not support daemonisation using the "
+            "-d, --deamon, -j or --justDaemoniseNoPIDFile options\n",
             config.appName);
     exit(EXIT_FAILURE);
   }
@@ -1368,7 +1370,7 @@ int main(int argc, char **argv) {
 
   // initialise the accessor lock on config
   pthread_mutex_init(&config.lock, NULL);
-  
+
   // this is a bit weird, but necessary -- basename() may modify the argument passed in
   char *basec = strdup(argv[0]);
   char *bname = basename(basec);
@@ -1422,8 +1424,7 @@ int main(int argc, char **argv) {
   // config.statistics_requested = 0; // don't print stats in the log
   // config.userSuppliedLatency = 0; // zero means none supplied
 
-  config.debugger_show_file_and_line =
-      1;                         // by default, log the file name and line number
+  config.debugger_show_file_and_line = 1; // by default, log the file name and line number
   config.debugger_show_relative_time =
       1;                         // by default, log the time back to the previous debug message
   config.resyncthreshold = 0.05; // 50 ms
@@ -1690,8 +1691,9 @@ int main(int argc, char **argv) {
 
   /* Print out options */
   debug(1, "disable resend requests is %s.", config.disable_resend_requests ? "on" : "off");
-  debug(1, "diagnostic_drop_packet_fraction is %f. A value of 0.0 means no packets will be dropped "
-           "deliberately.",
+  debug(1,
+        "diagnostic_drop_packet_fraction is %f. A value of 0.0 means no packets will be dropped "
+        "deliberately.",
         config.diagnostic_drop_packet_fraction);
   debug(1, "statistics_requester status is %d.", config.statistics_requested);
 #if CONFIG_LIBDAEMON
@@ -1714,8 +1716,8 @@ int main(int argc, char **argv) {
   debug(1, "mdns backend \"%s\".", config.mdns_name);
   debug(2, "userSuppliedLatency is %d.", config.userSuppliedLatency);
   debug(1, "interpolation setting is \"%s\".",
-        config.packet_stuffing == ST_basic ? "basic" : config.packet_stuffing == ST_soxr ? "soxr"
-                                                                                         : "auto");
+        config.packet_stuffing == ST_basic ? "basic"
+                                           : config.packet_stuffing == ST_soxr ? "soxr" : "auto");
   debug(1, "interpolation soxr_delay_threshold is %d.", config.soxr_delay_threshold);
   debug(1, "resync time is %f seconds.", config.resyncthreshold);
   debug(1, "allow a session to be interrupted: %d.", config.allow_session_interruption);
@@ -1729,8 +1731,9 @@ int main(int argc, char **argv) {
     debug(1, "volume_max_db is not set");
   debug(1, "volume range in dB (zero means use the range specified by the mixer): %u.",
         config.volume_range_db);
-  debug(1, "volume_range_combined_hardware_priority (1 means hardware mixer attenuation is used "
-           "first) is %d.",
+  debug(1,
+        "volume_range_combined_hardware_priority (1 means hardware mixer attenuation is used "
+        "first) is %d.",
         config.volume_range_hw_priority);
   debug(1, "playback_mode is %d (0-stereo, 1-mono, 1-reverse_stereo, 2-both_left, 3-both_right).",
         config.playback_mode);

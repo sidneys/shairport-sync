@@ -149,9 +149,9 @@ void activity_thread_cleanup_handler(__attribute__((unused)) void *arg) {
 }
 
 void *activity_monitor_thread_code(void *arg) {
-  //int rc = pthread_mutex_init(&activity_monitor_mutex, NULL);
-  //if (rc)
-   // die("activity_monitor: error %d initialising activity_monitor_mutex.", rc);
+  // int rc = pthread_mutex_init(&activity_monitor_mutex, NULL);
+  // if (rc)
+  // die("activity_monitor: error %d initialising activity_monitor_mutex.", rc);
 
 // set the flowcontrol condition variable to wait on a monotonic clock
 #ifdef COMPILE_FOR_LINUX_AND_FREEBSD_AND_CYGWIN_AND_OPENBSD

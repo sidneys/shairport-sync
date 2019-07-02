@@ -375,10 +375,10 @@ extern sigset_t pselect_sigset;
 
 pthread_mutex_t the_conn_lock;
 
-#define conn_lock(arg) \
-  pthread_mutex_lock(&the_conn_lock); \
-  arg; \
-  pthread_mutex_unlock(&the_conn_lock);  
+#define conn_lock(arg)                                                                             \
+  pthread_mutex_lock(&the_conn_lock);                                                              \
+  arg;                                                                                             \
+  pthread_mutex_unlock(&the_conn_lock);
 
 // wait for the specified time in microseconds -- it checks every 20 milliseconds
 int sps_pthread_mutex_timedlock(pthread_mutex_t *mutex, useconds_t dally_time,
@@ -400,11 +400,11 @@ void pthread_cleanup_debug_mutex_unlock(void *arg);
 #define pthread_cleanup_debug_mutex_lock(mu, t, d)                                                 \
   if (_debug_mutex_lock(mu, t, #mu, __FILE__, __LINE__, d) == 0)                                   \
   pthread_cleanup_push(pthread_cleanup_debug_mutex_unlock, (void *)mu)
-  
-#define config_lock \
-	  if (pthread_mutex_trylock(&config.lock) != 0) { \
-	    debug(1,"config_lock: cannot acquire config.lock"); \
-	  }
+
+#define config_lock                                                                                \
+  if (pthread_mutex_trylock(&config.lock) != 0) {                                                  \
+    debug(1, "config_lock: cannot acquire config.lock");                                           \
+  }
 
 #define config_unlock pthread_mutex_unlock(&config.lock)
 

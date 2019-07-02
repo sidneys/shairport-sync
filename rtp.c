@@ -71,11 +71,11 @@ uint64_t local_to_remote_time_difference_now(rtsp_conn_info *conn) {
   // be from the time of the last time ping
   uint64_t local_time_now_fp = get_absolute_time_in_fp();
   conn_lock(uint64_t time_since_last_local_to_remote_time_difference_measurement =
-      local_time_now_fp - conn->local_to_remote_time_difference_measurement_time);
+                local_time_now_fp - conn->local_to_remote_time_difference_measurement_time);
 
   conn_lock(uint64_t remote_time_since_last_local_to_remote_time_difference_measurement =
-      (uint64_t)(conn->local_to_remote_time_gradient *
-                 time_since_last_local_to_remote_time_difference_measurement));
+                (uint64_t)(conn->local_to_remote_time_gradient *
+                           time_since_last_local_to_remote_time_difference_measurement));
 
   double drift;
   if (remote_time_since_last_local_to_remote_time_difference_measurement >=
@@ -94,7 +94,8 @@ uint64_t local_to_remote_time_difference_now(rtsp_conn_info *conn) {
   //  milliseconds with drift of %.2f
   //  ppm.",drift*1000000,(uint64_t)(drift*(uint64_t)0x100000000),interval_ms,(1.0-conn->local_to_remote_time_gradient)*1000000);
   //  return conn->local_to_remote_time_difference + (uint64_t)(drift*(uint64_t 0x100000000));
-  conn_lock(uint64_t rtn = conn->local_to_remote_time_difference + (uint64_t)(drift * (uint64_t)0x100000000));
+  conn_lock(uint64_t rtn =
+                conn->local_to_remote_time_difference + (uint64_t)(drift * (uint64_t)0x100000000));
   return rtn;
 }
 
@@ -138,8 +139,9 @@ void *rtp_audio_receiver(void *arg) {
       stat_mean += stat_delta / stat_n;
       stat_M2 += stat_delta * (time_interval_us - stat_mean);
       if (stat_n % 2500 == 0) {
-        debug(2, "Packet reception interval stats: mean, standard deviation and max for the last "
-                 "2,500 packets in microseconds: %10.1f, %10.1f, %10.1f.",
+        debug(2,
+              "Packet reception interval stats: mean, standard deviation and max for the last "
+              "2,500 packets in microseconds: %10.1f, %10.1f, %10.1f.",
               stat_mean, sqrtf(stat_M2 / (stat_n - 1)), longest_packet_time_interval_us);
         stat_n = 0;
         stat_mean = 0.0;
@@ -259,52 +261,52 @@ void *rtp_control_receiver(void *arg) {
           (drand48() > config.diagnostic_drop_packet_fraction)) {
 
         ssize_t plen = nread;
-        if (packet[1] == 0xd4) {                       // sync data
-                                                       /*
-                                                            // the following stanza is for debugging only -- normally commented out.
-                                                            {
-                                                              char obf[4096];
-                                                              char *obfp = obf;
-                                                              int obfc;
-                                                              for (obfc = 0; obfc < plen; obfc++) {
-                                                                snprintf(obfp, 3, "%02X", packet[obfc]);
-                                                                obfp += 2;
-                                                              };
-                                                              *obfp = 0;
-                                             
-                                             
-                                                              // get raw timestamp information
-                                                              // I think that a good way to understand these timestamps is that
-                                                              // (1) the rtlt below is the timestamp of the frame that should be playing at the
-                                                              // client-time specified in the packet if there was no delay
-                                                              // and (2) that the rt below is the timestamp of the frame that should be playing
-                                                              // at the client-time specified in the packet on this device taking account of
-                                                              // the delay
-                                                              // Thus, (3) the latency can be calculated by subtracting the second from the
-                                                              // first.
-                                                              // There must be more to it -- there something missing.
-                                             
-                                                              // In addition, it seems that if the value of the short represented by the second
-                                                              // pair of bytes in the packet is 7
-                                                              // then an extra time lag is expected to be added, presumably by
-                                                              // the AirPort Express.
-                                             
-                                                              // Best guess is that this delay is 11,025 frames.
-                                             
-                                                              uint32_t rtlt = nctohl(&packet[4]); // raw timestamp less latency
-                                                              uint32_t rt = nctohl(&packet[16]);  // raw timestamp
-                                             
-                                                              uint32_t fl = nctohs(&packet[2]); //
-                                             
-                                                              debug(1,"Sync Packet of %d bytes received: \"%s\", flags: %d, timestamps %u and %u,
-                                                          giving a latency of %d frames.",plen,obf,fl,rt,rtlt,rt-rtlt);
-                                                              //debug(1,"Monotonic timestamps are: %" PRId64 " and %" PRId64 "
-                                                          respectively.",monotonic_timestamp(rt, conn),monotonic_timestamp(rtlt, conn));
-                                                            }
-                                                      */
+        if (packet[1] == 0xd4) { // sync data
+                                 /*
+                                      // the following stanza is for debugging only -- normally commented out.
+                                      {
+                                        char obf[4096];
+                                        char *obfp = obf;
+                                        int obfc;
+                                        for (obfc = 0; obfc < plen; obfc++) {
+                                          snprintf(obfp, 3, "%02X", packet[obfc]);
+                                          obfp += 2;
+                                        };
+                                        *obfp = 0;
+                       
+                       
+                                        // get raw timestamp information
+                                        // I think that a good way to understand these timestamps is that
+                                        // (1) the rtlt below is the timestamp of the frame that should be playing at the
+                                        // client-time specified in the packet if there was no delay
+                                        // and (2) that the rt below is the timestamp of the frame that should be playing
+                                        // at the client-time specified in the packet on this device taking account of
+                                        // the delay
+                                        // Thus, (3) the latency can be calculated by subtracting the second from the
+                                        // first.
+                                        // There must be more to it -- there something missing.
+                       
+                                        // In addition, it seems that if the value of the short represented by the second
+                                        // pair of bytes in the packet is 7
+                                        // then an extra time lag is expected to be added, presumably by
+                                        // the AirPort Express.
+                       
+                                        // Best guess is that this delay is 11,025 frames.
+                       
+                                        uint32_t rtlt = nctohl(&packet[4]); // raw timestamp less latency
+                                        uint32_t rt = nctohl(&packet[16]);  // raw timestamp
+                       
+                                        uint32_t fl = nctohs(&packet[2]); //
+                       
+                                        debug(1,"Sync Packet of %d bytes received: \"%s\", flags: %d, timestamps %u and %u,
+                                    giving a latency of %d frames.",plen,obf,fl,rt,rtlt,rt-rtlt);
+                                        //debug(1,"Monotonic timestamps are: %" PRId64 " and %" PRId64 "
+                                    respectively.",monotonic_timestamp(rt, conn),monotonic_timestamp(rtlt, conn));
+                                      }
+                                */
           conn_lock(uint64_t ltrd = conn->local_to_remote_time_difference);
           if (ltrd) { // need a time packet to be interchanged
-                                                       // first...
+                      // first...
 
             remote_time_of_sync = (uint64_t)nctohl(&packet[8]) << 32;
             remote_time_of_sync += nctohl(&packet[12]);
@@ -370,9 +372,10 @@ void *rtp_control_receiver(void *arg) {
 
                 if (la != conn->latency) {
                   conn_lock(conn->latency = la);
-                  debug(3, "New latency detected: %" PRIu32 ", sync latency: %" PRIu32
-                           ", minimum latency: %" PRIu32 ", maximum "
-                           "latency: %" PRIu32 ", fixed offset: %" PRIu32 ".",
+                  debug(3,
+                        "New latency detected: %" PRIu32 ", sync latency: %" PRIu32
+                        ", minimum latency: %" PRIu32 ", maximum "
+                        "latency: %" PRIu32 ", fixed offset: %" PRIu32 ".",
                         la, sync_rtp_timestamp - rtp_timestamp_less_latency, conn->minimum_latency,
                         conn->maximum_latency, config.fixedLatencyOffset);
                 }
@@ -381,34 +384,34 @@ void *rtp_control_receiver(void *arg) {
 
             debug_mutex_lock(&conn->reference_time_mutex, 1000, 0);
 
-            conn_lock(if (conn->initial_reference_time == 0) {
-              if (conn->packet_count_since_flush > 0) {
-                conn->initial_reference_time = remote_time_of_sync;
-                conn->initial_reference_timestamp = sync_rtp_timestamp;
-              }
-            } else {
-              uint64_t remote_frame_time_interval =
-                  conn->remote_reference_timestamp_time -
-                  conn->initial_reference_time; // here, this should never be zero
-              if (remote_frame_time_interval) {
-                conn->remote_frame_rate =
-                    (1.0 * (conn->reference_timestamp - conn->initial_reference_timestamp)) /
-                    remote_frame_time_interval; // an IEEE double calculation with a 32-bit
-                                                // numerator and 64-bit denominator
-                                                // integers
-                conn->remote_frame_rate =
-                    conn->remote_frame_rate * (uint64_t)0x100000000; // this should just change the
-                // [binary] exponent in the IEEE
-                // FP representation; the
-                // mantissa should be unaffected.
-              } else {
-                conn->remote_frame_rate = 0.0; // use as a flag.
-              }
-            }
-            )
+            conn_lock(
+                if (conn->initial_reference_time == 0) {
+                  if (conn->packet_count_since_flush > 0) {
+                    conn->initial_reference_time = remote_time_of_sync;
+                    conn->initial_reference_timestamp = sync_rtp_timestamp;
+                  }
+                } else {
+                  uint64_t remote_frame_time_interval =
+                      conn->remote_reference_timestamp_time -
+                      conn->initial_reference_time; // here, this should never be zero
+                  if (remote_frame_time_interval) {
+                    conn->remote_frame_rate =
+                        (1.0 * (conn->reference_timestamp - conn->initial_reference_timestamp)) /
+                        remote_frame_time_interval; // an IEEE double calculation with a 32-bit
+                                                    // numerator and 64-bit denominator
+                                                    // integers
+                    conn->remote_frame_rate = conn->remote_frame_rate *
+                                              (uint64_t)0x100000000; // this should just change the
+                    // [binary] exponent in the IEEE
+                    // FP representation; the
+                    // mantissa should be unaffected.
+                  } else {
+                    conn->remote_frame_rate = 0.0; // use as a flag.
+                  }
+                })
 
-            // this is for debugging
-            uint64_t old_remote_reference_time = conn->remote_reference_timestamp_time;
+                // this is for debugging
+                uint64_t old_remote_reference_time = conn->remote_reference_timestamp_time;
             uint32_t old_reference_timestamp = conn->reference_timestamp;
             // int64_t old_latency_delayed_timestamp = conn->latency_delayed_timestamp;
 
@@ -759,8 +762,9 @@ void *rtp_timing_receiver(void *arg) {
             }
             */
             conn_lock(conn->local_to_remote_time_difference =
-                l2rtd); // make this the new local-to-remote-time-difference
-            conn_lock(conn->local_to_remote_time_difference_measurement_time = lt); // done at this time.
+                          l2rtd); // make this the new local-to-remote-time-difference
+            conn_lock(conn->local_to_remote_time_difference_measurement_time =
+                          lt); // done at this time.
 
             if (first_local_to_remote_time_difference == 0) {
               first_local_to_remote_time_difference = conn->local_to_remote_time_difference;
@@ -822,14 +826,10 @@ void *rtp_timing_receiver(void *arg) {
                   mbl = mbl + xid * xid;
                 }
               conn->local_to_remote_time_gradient_sample_count = sample_count;
-              conn_lock(
-              if (mbl)
-                conn->local_to_remote_time_gradient = (1.0 * mtl) / mbl;
-              else {
+              conn_lock(if (mbl) conn->local_to_remote_time_gradient = (1.0 * mtl) / mbl; else {
                 conn->local_to_remote_time_gradient = 1.0;
                 debug(1, "rtp_timing_receiver: mbl is 0");
-              }
-              )
+              })
             } else {
               conn_lock(conn->local_to_remote_time_gradient = 1.0);
             }
@@ -1245,8 +1245,9 @@ void rtp_request_resend(seq_t first, uint32_t count, rtsp_conn_info *conn) {
                    (struct sockaddr *)&conn->rtp_client_control_socket, msgsize) == -1) {
           char em[1024];
           strerror_r(errno, em, sizeof(em));
-          debug(1, "Error %d using sendto to an audio socket: \"%s\". Backing off for 1/16th of a "
-                   "second.",
+          debug(1,
+                "Error %d using sendto to an audio socket: \"%s\". Backing off for 1/16th of a "
+                "second.",
                 errno, em);
           conn->rtp_time_of_last_resend_request_error_fp = time_of_sending_fp;
         } else {
