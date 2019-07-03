@@ -1089,6 +1089,9 @@ char *str_replace(const char *string, const char *substr, const char *replacemen
 
 /* from http://burtleburtle.net/bob/rand/smallprng.html */
 
+// this is not thread-safe, so we need a mutex on it to use it properly// always lock use this when accessing the fp_time_at_last_debug_message
+pthread_mutex_t r64_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 // typedef uint64_t u8;
 typedef struct ranctx {
   uint64_t a;
@@ -1466,11 +1469,11 @@ int64_t generate_zero_frames(char *outp, size_t number_of_frames, enum sps_forma
   int64_t previous_random_number = random_number_in;
   char *p = outp;
   size_t sample_number;
+  r64_lock; // the random number generator is not thread safe, so we need to lock it while using it
   for (sample_number = 0; sample_number < number_of_frames * 2; sample_number++) {
 
     int64_t hyper_sample = 0;
-
-    int64_t r = ranarray64i();
+    int64_t r = r64i();
 
     int64_t tpdf = (r & dither_mask) - (previous_random_number & dither_mask);
 
@@ -1563,5 +1566,6 @@ int64_t generate_zero_frames(char *outp, size_t number_of_frames, enum sps_forma
     p += sample_length;
     previous_random_number = r;
   }
+  r64_unlock;
   return previous_random_number;
 }

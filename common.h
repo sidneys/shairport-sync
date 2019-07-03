@@ -408,6 +408,12 @@ void pthread_cleanup_debug_mutex_unlock(void *arg);
 
 #define config_unlock pthread_mutex_unlock(&config.lock)
 
+pthread_mutex_t r64_mutex;
+
+#define r64_lock pthread_mutex_lock(&r64_mutex)
+
+#define r64_unlock pthread_mutex_unlock(&r64_mutex)
+
 char *get_version_string(); // mallocs a string space -- remember to free it afterwards
 
 void sps_nanosleep(const time_t sec,
