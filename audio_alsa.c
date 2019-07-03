@@ -2004,7 +2004,7 @@ void *alsa_buffer_monitor_thread_code(__attribute__((unused)) void *arg) {
             pthread_cleanup_push(malloc_cleanup, silence);
             int use_dither = 0;
             if ((hardware_mixer == 0) && (config.ignore_volume_control == 0) &&
-                (config.airplay_volume != 0.0))
+                (get_config_airplay_volume() != 0.0))
               use_dither = 1;
             dither_random_number_store =
                 generate_zero_frames(silence, frames_of_silence, config.output_format,
