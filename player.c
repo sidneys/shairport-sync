@@ -1809,8 +1809,9 @@ void *player_thread_func(void *arg) {
 // this is about half a minute
 //#define trend_interval 3758
 #define trend_interval 1003
-
-  stats_t statistics[trend_interval];
+  stats_t *statistics = malloc(trend_interval * sizeof(stats_t));
+  pthread_cleanup_push(malloc_cleanup, statistics);
+  // stats_t statistics[trend_interval];
   int number_of_statistics, oldest_statistic, newest_statistic;
   int at_least_one_frame_seen = 0;
   int64_t tsum_of_sync_errors, tsum_of_corrections, tsum_of_insertions_and_deletions,
@@ -2437,9 +2438,10 @@ void *player_thread_func(void *arg) {
 #endif
               ) {
                 int32_t *tbuf32 = (int32_t *)conn->tbuf;
-                float fbuf_l[inbuflength];
-                float fbuf_r[inbuflength];
-
+                float *fbuf_l = malloc(sizeof(float) * inbuflength);
+                pthread_cleanup_push(malloc_cleanup, fbuf_l);
+                float *fbuf_r = malloc(sizeof(float) * inbuflength);
+                pthread_cleanup_push(malloc_cleanup, fbuf_r);
                 // Deinterleave, and convert to float
                 int i;
                 for (i = 0; i < inbuflength; ++i) {
@@ -2480,6 +2482,9 @@ void *player_thread_func(void *arg) {
                   tbuf32[2 * i] = fbuf_l[i];
                   tbuf32[2 * i + 1] = fbuf_r[i];
                 }
+
+                pthread_cleanup_pop(1); // free(fbuf_r);
+                pthread_cleanup_pop(1); // free(fbuf_l);
               }
 
 #ifdef CONFIG_SOXR
@@ -2780,8 +2785,8 @@ void *player_thread_func(void *arg) {
       }
     }
   }
-
   debug(1, "This should never be called.");
+  pthread_cleanup_pop(1); // pop the statistics allocation
   pthread_cleanup_pop(1); // pop the cleanup handler
                           //  debug(1, "This should never be called either.");
                           //  pthread_cleanup_pop(1); // pop the initial cleanup handler
@@ -3052,6 +3057,7 @@ int player_play(rtsp_conn_info *conn) {
   if (pt == NULL)
     die("Couldn't allocate space for pthread_t");
   conn->player_thread = pt;
+  /*
   size_t size = (PTHREAD_STACK_MIN + 256 * 1024);
   pthread_attr_t tattr;
   pthread_attr_init(&tattr);
@@ -3060,9 +3066,11 @@ int player_play(rtsp_conn_info *conn) {
     debug(1, "Error setting stack size for player_thread: %s", strerror(errno));
   // finished initialising.
   rc = pthread_create(pt, &tattr, player_thread_func, (void *)conn);
+  */
+  int rc = pthread_create(pt, NULL, player_thread_func, (void *)conn);
   if (rc)
     debug(1, "Error creating player_thread: %s", strerror(errno));
-  pthread_attr_destroy(&tattr);
+  // pthread_attr_destroy(&tattr);
 #ifdef CONFIG_METADATA
   debug(2, "pbeg");
   send_ssnc_metadata('pbeg', NULL, 0, 1); // contains cancellation points
