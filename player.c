@@ -123,6 +123,7 @@ static void ab_resync(rtsp_conn_info *conn) {
   for (i = 0; i < BUFFER_FRAMES; i++) {
     conn->audio_buffer[i].ready = 0;
     conn->audio_buffer[i].resend_level = 0;
+    conn->audio_buffer[i].resend_request_time = 0;
     conn->audio_buffer[i].sequence_number = 0;
   }
   conn->ab_synced = 0;
