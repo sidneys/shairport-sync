@@ -578,8 +578,13 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
         debug(1, "Error signalling flowcontrol.");
       
       // let's experiment with resend checks
-      /*
       {
+      	// uint64_t minimum_wait_time = (uint64_t)(config.resend_wait_before_check * (uint64_t)0x100000000);
+      	uint64_t resend_repeat_interval = (uint64_t)(config.resend_wait_between_checks * (uint64_t)0x100000000);
+      	uint64_t minimum_remaining_time = (uint64_t)(config.resend_last_check_before_use * (uint64_t)0x100000000);
+      	uint64_t latency_time = (uint64_t)(conn->latency * (uint64_t)0x100000000);
+      	latency_time = latency_time / (uint64_t)conn->input_rate;
+      	
         // calculate the starting and ending search points
         // the starting point is the shortest time before use that it still makes sense to look for the missing frame
         // the ending point is the shortest time to wait to determine if the frame is missing
@@ -595,7 +600,10 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
         else
           x = conn->ab_read;
       
+      	int missing_frame_run_count = 0;
+      	int start_of_missing_frame_run = -1;
         int number_of_missing_frames = 0;
+        
         while (x != conn->ab_write) {
           abuf_t *check_buf = conn->audio_buffer + BUFIDX(x);
           if (!check_buf->ready) {
@@ -603,10 +611,11 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
               first_possibly_missing_frame = x;
               debug(1,"Oldest missing frame is %d with ab_read of %d.", x, conn->ab_read);
             }
-            int too_early = (time_now - check_buf->time_tag) < minimum_wait_time;
-            int too_late = check_buf->time_tag - (time_now - latency_time) < minimum_expected_response_time;
-            int too_soon = (time_now - check_buf->time_tag) < resend_repeat_interval;
-            if ((!too_soon) && (!too_early) && (!too_late)){
+            int too_late = ((check_buf->time_tag < (time_now - latency_time)) || ((check_buf->time_tag - (time_now - latency_time)) < minimum_remaining_time));
+            int too_soon_after_last_request = ((time_now - check_buf->time_tag) < resend_repeat_interval); // time_now can never be less than the time_tag
+            // too_late = 0;
+            too_soon_after_last_request = 0;
+            if ((!too_soon_after_last_request) && (!too_late)){
               if (start_of_missing_frame_run == -1) {
                 start_of_missing_frame_run = x;
                 missing_frame_run_count = 1;
@@ -621,6 +630,10 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
           x = (x + 1) & 0xffff;
           if (((check_buf->ready) || (x == conn->ab_write)) && (missing_frame_run_count > 0)) {
           // send a resend request
+          	debug(1,"request resend of %d packets starting at seqno %u.", missing_frame_run_count, start_of_missing_frame_run);
+                  start_of_missing_frame_run = -1;
+                  missing_frame_run_count = 0;
+          /*
                 if (config.disable_resend_requests == 0) {
                   debug_mutex_unlock(&conn->ab_mutex, 3);
                   rtp_request_resend(start_of_missing_frame_run, missing_frame_run_count, conn);
@@ -628,13 +641,13 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
                   conn->resend_requests++;
                   start_of_missing_frame_run = -1;
                   missing_frame_run_count = 0;
-                }          
+                }
+          */          
           }
         }
         if (number_of_missing_frames == 0)
           first_possibly_missing_frame = conn->ab_write;
       }
-      */
 
 
       // if it's at the expected time, do a look back for missing packets
