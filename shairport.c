@@ -404,7 +404,7 @@ int parse_options(int argc, char **argv) {
 // this fact
   config.resend_wait_before_check = 0.10; // wait this many seconds before requesting the resending of a missing packet
   config.resend_wait_between_checks = 0.25; // wait this many seconds before again requesting the resending of a missing packet
-  config.resend_wait_before_check = 0.10; // give up if the packet is still missing this close to when it's needed
+  config.resend_last_check_before_use = 0.10; // give up if the packet is still missing this close to when it's needed
 
 #ifdef CONFIG_METADATA_HUB
   config.cover_art_cache_dir = "/tmp/shairport-sync/.cache/coverart";
