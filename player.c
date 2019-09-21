@@ -122,10 +122,9 @@ static void ab_resync(rtsp_conn_info *conn) {
   int i;
   for (i = 0; i < BUFFER_FRAMES; i++) {
     conn->audio_buffer[i].ready = 0;
-    // conn->audio_buffer[i].resend_level = 0;
     conn->audio_buffer[i].resend_request_number = 0;
-    conn->audio_buffer[i].resend_time = 0; // this is either (1) zero, (2) the time it was noticed the packet was missing or (3) the time the last resend was requested.
-    conn->audio_buffer[i].initialisation_time = 0; // this is either (1) zero, (2) the time it was noticed the packet was missing or (3) the time the last resend was requested.    
+    conn->audio_buffer[i].resend_time = 0; // this is either zero or the time the last resend was requested.
+    conn->audio_buffer[i].initialisation_time = 0; // this is either the time the packet was received or the time it was noticed the packet was missing.    
     conn->audio_buffer[i].sequence_number = 0;
   }
   conn->ab_synced = 0;
@@ -557,7 +556,6 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
         for (i = 0; i < gap; i++) {
           abuf = conn->audio_buffer + BUFIDX(seq_sum(conn->ab_write, i));
           abuf->ready = 0; // to be sure, to be sure
-          // abuf->resend_level = 0;
           abuf->resend_request_number = 0;
           abuf->initialisation_time = time_now; // this represents when the packet was noticed to be missing
           abuf->resend_time = 0;
@@ -600,7 +598,6 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
         } else {
           debug(1, "Bad audio packet detected and discarded.");
           abuf->ready = 0;
-          // abuf->resend_level = 0;
           abuf->resend_request_number = 0;
           abuf->given_timestamp = 0;
           abuf->sequence_number = 0;
@@ -612,7 +609,7 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
       if (rc)
         debug(1, "Error signalling flowcontrol.");
       
-      // let's experiment with resend checks
+      // resend checks
       {
       	uint64_t minimum_wait_time = (uint64_t)(config.resend_wait_before_check * (uint64_t)0x100000000);
       	uint64_t resend_repeat_interval = (uint64_t)(config.resend_wait_between_checks * (uint64_t)0x100000000);
@@ -675,45 +672,6 @@ void player_put_packet(seq_t seqno, uint32_t actual_timestamp, uint8_t *data, in
         if (number_of_missing_frames == 0)
           first_possibly_missing_frame = conn->ab_write;
       }
-
-/*
-      // if it's at the expected time, do a look back for missing packets
-      // but release the ab_mutex when doing a resend
-      if (!conn->ab_buffering) {
-        int j;
-        for (j = 1; j <= number_of_resend_attempts; j++) {
-          // check j times, after a short period of has elapsed, assuming 352 frames per packet
-          // the higher the step_exponent, the less it will try. 1 means it will try very
-          // hard. 2.0 seems good.
-          float step_exponent = 2.0;
-          int back_step = (int)(resend_interval * pow(j, step_exponent));
-          int k;
-          for (k = -1; k <= 1; k++) {
-            if ((back_step + k) <
-                seq_diff(conn->ab_read, conn->ab_write,
-                         conn->ab_read)) { // if it's within the range of frames in use...
-              int item_to_check = (conn->ab_write - (back_step + k)) & 0xffff;
-              seq_t next = item_to_check;
-              abuf_t *check_buf = conn->audio_buffer + BUFIDX(next);
-              if ((!check_buf->ready) &&
-                  (check_buf->resend_level <
-                   j)) { // prevent multiple requests from the same level of lookback
-                check_buf->resend_level = j;
-                debug(2,"request resend of packet %u.", next);
-                
-                if (config.disable_resend_requests == 0) {
-                  debug_mutex_unlock(&conn->ab_mutex, 3);
-                  rtp_request_resend(next, 1, conn);
-                  conn->resend_requests++;
-                  debug_mutex_lock(&conn->ab_mutex, 20000, 1);
-                }
-                
-              }
-            }
-          }
-        }
-      }
-*/
     }
   }
   debug_mutex_unlock(&conn->ab_mutex, 0);
@@ -1040,7 +998,6 @@ static abuf_t *buffer_get_frame(rtsp_conn_info *conn) {
                    "timestamp: %" PRIu32 ".",
                 curframe->sequence_number, curframe->given_timestamp, conn->flush_rtp_timestamp);
           curframe->ready = 0;
-          // curframe->resend_level = 0;
           curframe->resend_request_number = 0;
           curframe = NULL; // this will be returned and will cause the loop to go around again
           conn->initial_reference_time = 0;
@@ -1438,8 +1395,6 @@ static abuf_t *buffer_get_frame(rtsp_conn_info *conn) {
       curframe->given_timestamp = 0; // indicate a silent frame should be substituted
     }
     curframe->ready = 0;
-    // curframe->resend_level = 0;
-    // curframe->resend_request_number = 0;
   }
   conn->ab_read = SUCCESSOR(conn->ab_read);
   pthread_cleanup_pop(1);

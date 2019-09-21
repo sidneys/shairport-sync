@@ -39,7 +39,6 @@ typedef uint16_t seq_t;
 
 typedef struct audio_buffer_entry { // decoded audio packets
   int ready;
-  // int resend_level;
   uint64_t initialisation_time; // the time the packet was added or the time it was noticed the packet was missing
   uint64_t resend_time; // time of last resend request or zero
   int resend_request_number;
